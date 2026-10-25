@@ -48,7 +48,7 @@ jobs:
   verify-mobile:
     name: Verify deployed mobile layout
     needs: deploy
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
