@@ -42,7 +42,7 @@ async function checkWidth(width) {
         return null
       }
       return !!find(document)
-    }, { timeout: 90000 })
+    }, null, { timeout: 90000 })
     await page.waitForTimeout(1000)
 
     const geometry = await page.evaluate(() => {
