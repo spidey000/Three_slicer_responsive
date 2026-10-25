@@ -25,6 +25,8 @@ El prototipo delega estas operaciones en los controles y el motor upstream, en l
 
 El visor mantiene su Shadow DOM. La demo añade reglas de móvil y tablet dentro de su raíz abierta, vinculadas a la versión fijada del paquete. Por debajo de 768 px esconde solo el sidebar nativo y ofrece los ajustes y el comando de laminado desde el cajón/banda inferior. Entre 768 y 1100 px conserva el sidebar y lo estrecha a 300 px.
 
+GitHub Pages requiere que el propietario seleccione una vez **Settings → Pages → Build and deployment → Source: GitHub Actions**. La integración GitHub puede publicar el código, pero no puede crear esa configuración del sitio: GitHub Actions responde `Resource not accessible by integration` al intentar habilitarla. Después de activar Pages, el workflow realiza las publicaciones futuras.
+
 GitHub Pages no permite servir cabeceras COOP/COEP. El paquete escoge el worker compatible con el entorno; la variante multihilo necesita aislamiento entre orígenes, por lo que Pages puede utilizar el kernel de un hilo. WebGL es necesario para el visor. Las operaciones locales no suben los modelos a un backend.
 
 ## Comprobación realizada
