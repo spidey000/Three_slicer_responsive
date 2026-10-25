@@ -43,7 +43,9 @@ The bridge listens only on **127.0.0.1**. It has **no login/authentication**. Do
 | `POST /api/printer/jobs?start=false` | `upload TEMP.gcode` | Upload only: no explicit M23/M24 selection or start in this CLI path. |
 | `POST /api/printer/jobs?start=true` | `upload TEMP.gcode --start` | Upload and explicitly request selection/start after upload confirmation. |
 
-The job body is plain-text G-code, up to 100 MiB. The bridge invokes CLI subprocesses with argument arrays rather than a shell, stores job bytes in a temporary directory, and sends back a JSON status/error response. It does not provide the rest of the CLI's commands; see the feature matrix in the root README.
+The job body is plain-text G-code, up to 100 MiB. The bridge invokes CLI subprocesses with argument arrays rather than a shell, stores job bytes in a temporary directory, and sends back a JSON status/error response. Printer Manager now adds discovery, remote-file lists and printing, pause/resume/cancel, diagnostics, fan on/off, bounded timelapse, local Linux notifications and connection-profile management through additional allowlisted endpoints. See [Printer Manager reference](PRINTER_MANAGER.md).
+
+**Security for mobile:** this server intentionally listens on loopback only and has no authentication. A phone cannot control it through GitHub Pages or another machine's 127.0.0.1. Use a properly authenticated, encrypted access layer if remote phone control is needed. Do not expose port 8765 or 8899 without one.
 
 ## Normal workflow
 
@@ -56,7 +58,7 @@ The job body is plain-text G-code, up to 100 MiB. The bridge invokes CLI subproc
 
 ## Troubleshooting
 
-- **Disconnected** on the hosted GitHub Pages version is expected: Pages serves a static slicer and has no local `/api` routes.
+- **Disconnected** on the hosted GitHub Pages version is expected: Pages serves a static slicer and has no local `/api` routes. The AD4 pill opens the printer manager, but its real CLI controls are disabled without a trusted bridge.
 - **Disconnected** locally: verify the venv is active, `ffadv4manager status --json`, host/IP, printer LAN connectivity, and local bridge logs.
 - **Camera unavailable:** verify `ffadv4manager camera snapshot /tmp/ad4-test.jpg`; the camera HTTP endpoint is independent of printer-control TCP.
 - **Missing build:** run `npm ci && npm run build` before `npm run local`.
