@@ -1,7 +1,7 @@
 """Same-origin, loopback-only FFAD4Manager bridge for ThreeSlicer.
 
-The hosted GitHub Pages site has no API. Never expose this unauthenticated
-printer-control HTTP server or the printer's legacy TCP interface to the WAN/LAN.
+The GitHub Pages demo has no printer API. Protected remote access must use
+Cloudflare Access JWT verification at this loopback-only origin.
 """
 import atexit
 import ipaddress
@@ -16,6 +16,13 @@ import tempfile
 import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlsplit
+
+if __package__:
+    from .cloudflare_access import load_access_config, verify_access_jwt, _jwks_client
+else:
+    from cloudflare_access import load_access_config, verify_access_jwt, _jwks_client
+
+ACCESS_CONFIG = load_access_config(os.environ)
 
 ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / 'dist'
@@ -125,13 +132,24 @@ class Handler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
-    def origin_ok(self):
-        # Permit direct localhost use and Vite's development proxy only.
+    def request_authorized(self, write=False):
         host = self.headers.get('Host', '').lower()
+        origin = self.headers.get('Origin')
+        if ACCESS_CONFIG:
+            # Access enabled: no loopback authentication bypass. Public requests
+            # need the exact Host and a valid signed Access JWT for this user.
+            if host != ACCESS_CONFIG['public_host']:
+                return False
+            if origin and origin != ACCESS_CONFIG['public_origin']:
+                return False
+            if write and origin != ACCESS_CONFIG['public_origin']:
+                return False
+            return verify_access_jwt(
+                self.headers.get('Cf-Access-Jwt-Assertion'), ACCESS_CONFIG)
+        # Development / local-only mode, never accessible from another host.
         if not re.fullmatch(r'(?:localhost|127\.0\.0\.1):\d{1,5}', host):
             return False
-        origin = self.headers.get('Origin')
-        if not origin:
+        if not write or not origin:
             return True
         return origin in ('http://' + host, 'http://localhost:5173',
                           'http://127.0.0.1:5173')
@@ -144,7 +162,13 @@ class Handler(SimpleHTTPRequestHandler):
             raise ValueError('Se requiere JSON')
         return json.loads(self.rfile.read(size))
 
+    def do_HEAD(self):
+        # Do not leak static file metadata through an unauthenticated inherited handler.
+        self.send_error(405, 'HEAD not supported')
+
     def do_GET(self):
+        if not self.request_authorized():
+            return self.json(401 if ACCESS_CONFIG else 403, {'error': 'Unauthorized request'})
         url = urlsplit(self.path)
         path = url.path
         try:
@@ -203,8 +227,8 @@ class Handler(SimpleHTTPRequestHandler):
                         '/api/printer/profiles/delete', '/api/printer/timelapse',
                         '/api/printer/notifications'):
             return self.send_error(404)
-        if not self.origin_ok():
-            return self.json(403, {'error': 'Origen no autorizado'})
+        if not self.request_authorized(write=True):
+            return self.json(401 if ACCESS_CONFIG else 403, {'error': 'Unauthorized request'})
         try:
             if path in ('/api/printer/jobs', '/api/printer/upload'):
                 size = int(self.headers.get('Content-Length', '0'))
@@ -326,6 +350,11 @@ class Handler(SimpleHTTPRequestHandler):
 if __name__ == '__main__':
     if not (DIST / 'index.html').is_file():
         sys.exit('Missing dist/: run npm run build first')
+    if ACCESS_CONFIG:
+        _jwks_client(ACCESS_CONFIG['jwks_url'])  # Fail fast if PyJWT is missing.
+        print('Cloudflare Access validation enabled: ' + ACCESS_CONFIG['public_origin'], flush=True)
+    else:
+        print('Local-only mode: Cloudflare authentication disabled', flush=True)
     port = int(os.environ.get('AD4_WEB_PORT', '8765'))
     print('AD4 web: http://127.0.0.1:' + str(port) + BASE, flush=True)
     ThreadingHTTPServer(('127.0.0.1', port), Handler).serve_forever()
