@@ -33,7 +33,10 @@ export const AD4_SAFE_PROCESS_OVERRIDES = Object.freeze({
   support_speed: [50],
   support_interface_speed: [40],
   travel_speed: [80],
-  // The stock bridge speed (25 mm/s) remains unchanged.
+  bridge_speed: [25],
+  skirt_speed: 20,
+  small_perimeter_speed: '50%',
+  ironing_speed: 15,
   // Orca parameters not implemented by the engine (e.g. overhang_N_4_speed)
   // are deliberately not presented as functional overrides.
   default_acceleration: [800],
@@ -43,6 +46,8 @@ export const AD4_SAFE_PROCESS_OVERRIDES = Object.freeze({
   sparse_infill_acceleration: [800],
   internal_solid_infill_acceleration: '650',
   top_surface_acceleration: [400],
+  bridge_acceleration: [500],
+  initial_layer_travel_acceleration: [500],
   travel_acceleration: [1000],
 })
 
