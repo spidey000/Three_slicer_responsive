@@ -30,6 +30,8 @@ jobs:
         run: node --test tests/ad4SafeProfile.test.mjs
       - name: Build demo
         run: npm run build
+      - name: Test local printer manager bridge
+        run: python3 -m unittest discover -s tests -p 'test_printer_manager_bridge.py'
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
