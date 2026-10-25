@@ -275,3 +275,64 @@ button:focus-visible, select:focus-visible { outline: 2px solid #a3e635; outline
 @media (prefers-reduced-motion:reduce) {
   .demo-shell button, .playback-expand svg { transition:none !important; }
 }
+
+
+/* Saved process/material presets: matched to the existing ThreeSlicer dark UI. */
+.profile-picker { display:flex; flex-direction:column; gap:6px; min-width:0; }
+.profile-picker > label { display:block; font-size:11px; font-weight:650; color:#c0cdd7; }
+.profile-selects .profile-picker select { width:100%; min-width:0; min-height:42px; }
+.profile-selects .profile-picker select optgroup,
+.profile-selects .profile-picker select option { background:#242e38; color:#edf2f7; }
+.profile-quick-actions { display:flex; gap:6px; margin-top:1px; }
+.profile-quick-actions button { flex:1; min-height:30px; padding:5px 8px; background:#293621; color:#c6eaa8;
+  border:1px solid #47673a; border-radius:9px; font-weight:600; font-size:11px; }
+.profile-quick-actions .profile-delete { flex:0 0 auto; color:#ffbdb4; border-color:#65423e; background:#332725; }
+.profile-notice { margin:0 0 9px; padding:8px 10px; color:#c3e88d; background:#25331f;
+  border:1px solid #3d5d31; border-radius:9px; font-size:11px; }
+.profile-save-backdrop { position:absolute; z-index:35; inset:0; background:rgba(5,9,12,.78);
+  backdrop-filter:blur(5px); display:flex; align-items:center; justify-content:center; padding:16px; }
+.profile-save-dialog { width:min(430px,100%); max-height:90dvh; overflow:auto; display:flex; flex-direction:column; gap:10px;
+  padding:22px; border:1px solid #425260; border-radius:20px; background:#19222b; box-shadow:0 24px 75px #000b; color:#f0f5f9; }
+.profile-save-eyebrow { font-size:10px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:#a3e635; }
+.profile-save-dialog h2 { font-size:19px; line-height:1.25; margin:0; letter-spacing:-.02em; }
+.profile-save-dialog p { font-size:12px; line-height:1.5; margin:0; color:#aabac6; }
+.profile-save-dialog label { color:#dce6ee; font-size:12px; font-weight:700; margin-top:6px; }
+.profile-save-dialog input { width:100%; height:46px; padding:0 12px; font-size:14px; font-family:inherit;
+  color:#edf3f8; border:1px solid #53616d; border-radius:11px; background:#29343e; }
+.profile-save-dialog input:focus { outline:2px solid #a3e635; outline-offset:2px; }
+.profile-save-dialog .profile-save-error { color:#ffafa5; }
+.profile-save-dialog .profile-save-note { color:#91a4b2; font-size:11px; }
+.profile-save-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+.profile-save-actions button { min-height:44px; padding:8px 12px; border:1px solid #40505e; border-radius:11px;
+  font:700 12px inherit; cursor:pointer; }
+.profile-save-actions .profile-cancel { color:#e2eaf0; background:#29343e; }
+.profile-save-actions .profile-confirm { color:#182109; background:#a3e635; border-color:#a3e635; }
+@media(min-width:768px) {
+  .desktop-profile-launcher { position:absolute; z-index:15; top:57px; right:12px; min-height:40px;
+    border:1px solid #597637; border-radius:12px; padding:7px 14px; color:#d9edc8;
+    background:#263824; box-shadow:0 8px 24px #0007; cursor:pointer; font-weight:700; }
+  .settings-drawer { position:absolute; z-index:20; top:0; right:0; bottom:0; width:min(475px,96vw);
+    height:100%; padding:14px 16px 16px; border-left:1px solid #354552;
+    display:flex; flex-direction:column; min-height:0; visibility:hidden;
+    background:#141b22; box-shadow:-20px 0 50px #0008; transform:translateX(105%);
+    transition:transform .24s ease; }
+  .settings-drawer.is-open { transform:translateX(0); visibility:visible; }
+  .drawer-handle { display:none; }
+  .drawer-header { margin-bottom:10px; }
+  .drawer-header strong { display:block; font-size:18px; }
+  .drawer-kicker { display:block; font-size:10px; font-weight:800; color:#a3e635; text-transform:uppercase; letter-spacing:.11em; }
+  .drawer-header small { display:block; color:#9cabba; font-size:11px; }
+  .close-drawer { width:40px; height:40px; border:1px solid #3b4956; border-radius:11px;
+    color:#eff4f7; background:#26313c; }
+  .drawer-scrim { display:block; position:absolute; z-index:19; inset:0; background:#080a0dbb; backdrop-filter:blur(2px); }
+  .profile-selects { grid-template-columns:1fr 1fr; }
+  .settings-surface { flex:1 1 auto; min-height:0; overflow:hidden; border-radius:12px; background:#1c232b; }
+  .drawer-slice { flex:0 0 48px; margin-top:10px; border:0; background:#a3e635; color:#152009;
+    border-radius:11px; font-weight:700; font-size:13px; }
+}
+@media(max-width:767px) {
+  .desktop-profile-launcher { display:none; }
+  .profile-selects { grid-template-columns:minmax(0,1fr); gap:8px; }
+  .settings-drawer .profile-picker select { min-height:40px; }
+  .profile-save-dialog { padding:18px; border-radius:18px; }
+}
