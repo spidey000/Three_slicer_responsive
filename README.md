@@ -131,31 +131,31 @@ The Vite dev server proxies `/api` to the local bridge on port `8765`; printer f
 
 | CLI function / command | CLI support | ThreeSlicer web UI | Details |
 | --- | --- | --- | --- |
-| Printer status, temperature, progress — `status --json` | Implemented | **UI** | A compact reported status label; full telemetry is **not** a dashboard. |
+| Printer status, temperature, progress — `status --json` | Implemented | **UI** | Status, temperatures, current job, layers and reported progress in Printer Manager. |
 | Printer camera still — `camera snapshot` | Implemented | **UI** | One image per request/refresh, not continuous video. |
 | Upload G-code / GX — `upload FILE` | Implemented | **UI** | UI posts freshly sliced G-code; CLI performs GX wrapping and listing check. |
 | Upload and start — `upload FILE --start` | Implemented | **UI** | Requests an actual print; requires explicit user action. |
-| Readable and JSON file list — `files [--json]` | Implemented | **CLI only** | The web app cannot browse printer storage. |
+| Readable and JSON file list — `files [--json]` | Implemented | **UI (local bridge)** | Printer Manager lists files and can start an existing file. |
 | Raw file-list diagnostics — `files-raw` | Implemented | **CLI only** | Debug output is not shown in the app. |
 | Existing printer file BMP preview — `files preview` | Implemented | **CLI only** | Different from camera snapshots. |
-| Printer discovery — `discover [--json]` | Implemented | **CLI only** | UI has no printer discovery or selector. |
+| Printer discovery — `discover [--json]` | Implemented | **UI (local bridge)** | Discover and select a printer exposed on port 8899. |
 | Continuous status sampling — `watch` | Implemented | **CLI only** | UI polls basic status, but does not expose the CLI watch display/JSONL. |
-| Firmware and identity — `info` | Implemented | **CLI only** | No firmware information panel. |
-| Reported coordinates — `position` | Implemented | **CLI only** | Read-only reports; not physical measurement. |
-| Connection diagnostics — `doctor` | Implemented | **CLI only** | The web app does not offer a diagnostic wizard. |
+| Firmware and identity — `info` | Implemented | **UI (local bridge)** | Information available in diagnostics. |
+| Reported coordinates — `position` | Implemented | **UI (local bridge)** | Read-only reports; not physical measurement. |
+| Connection diagnostics — `doctor` | Implemented | **UI (local bridge)** | The actual CLI doctor result is shown, without a simulated wizard. |
 | Wait for printer conditions — `wait` | Implemented | **CLI only** | No web automation for ready/temperature thresholds. |
 | Monitor to JSONL — `monitor` | Implemented | **CLI only** | Status/event logs and optional state-change snapshots. |
-| Desktop state notifications — `notify` | Implemented | **CLI only** | Requires Linux `notify-send`; no web notifications. |
-| Timelapse capture — `camera timelapse` | Implemented | **CLI only** | Interval-based still images; not synchronized to layers. |
+| Desktop state notifications — `notify` | Implemented | **UI (local bridge)** | Requires Linux `notify-send`; no web notifications. |
+| Timelapse capture — `camera timelapse` | Implemented | **UI (local bridge)** | Interval-based still images; not synchronized to layers. |
 | Get/open camera URL — `camera url/open` | Implemented | **CLI only** | UI provides a still-image modal, not a raw stream player. |
 | Convert G-code to GX — `convert` | Implemented | **CLI only** as a separate control | Automatic conversion during upload is used, but no standalone UI converter. |
 | Inspect local file metadata — `inspect` | Implemented | **CLI only** | CLI checks SHA-256, size and limited G-code metadata. |
-| Start a stored remote job — `print REMOTE_NAME` | Implemented | **CLI only** | UI Print uploads and requests start; cannot select an existing printer file. |
-| Pause, resume, cancel — `pause/resume/cancel` | Implemented | **CLI only** | **Not present in the web controls.** |
-| Fan on/off — `fan on/off` | Implemented | **CLI only** | Controls part-cooling fan, not the enclosure fan. |
+| Start a stored remote job — `print REMOTE_NAME` | Implemented | **UI (local bridge)** | Stored files can be selected and printed after confirmation. |
+| Pause, resume, cancel — `pause/resume/cancel` | Implemented | **UI (local bridge)** | The printer-management panel exposes these controls. |
+| Fan on/off — `fan on/off` | Implemented | **UI (local bridge)** | Only 100%-on/off for the part-cooling fan, not the enclosure fan. |
 | Rename printer — `printer rename` | Implemented | **CLI only** | No UI control. |
 | Connection config — `config` | Implemented | **CLI only** | Host and camera settings managed on the host. |
-| Named printer profiles — `profiles` / `--profile` | Implemented | **CLI only** | The web slicer uses one fixed Adventurer 4 profile. |
+| Named printer profiles — `profiles` / `--profile` | Implemented | **UI (local bridge)** | Named CLI connection profiles are managed separately from the slicer profile. |
 | CLI help — `help` | Implemented | **CLI only** | Full CLI documentation is external to the web UI. |
 | Separate FFAD4Manager slicer launcher — `slicer` | Implemented in FFAD4Manager | **Not used by this web app** | The CLI ships its own separately bundled local slicer UI; this repository uses `npm run local` and its own bridge. |
 | OrcaSlicer post-processing upload hook | Implemented separately | **Not integrated** | Available in FFAD4Manager for OrcaSlicer, not called by this web app. |
@@ -164,6 +164,8 @@ The Vite dev server proxies `/api` to the local bridge on port `8765`; printer f
 | Physically verified unattended print start / guaranteed no-start upload | Not established | **Not guaranteed** | Printer firmware side effects and GX compatibility require supervised real-world validation. |
 
 The CLI has broader capabilities than this web UI. For details, flags and precise safety conditions, consult the [full FFAD4Manager command reference](https://github.com/spidey000/FFAD4Manager/blob/main/docs/CLI.md).
+
+**Printer Manager:** tap the top-right AD4 status pill. The management screen reflects real CLI results only; GitHub Pages has no printer API. [Functionality and safety notes](docs/PRINTER_MANAGER.md).
 
 ## Local printer workflow
 
