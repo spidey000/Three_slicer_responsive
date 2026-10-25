@@ -298,6 +298,53 @@ const responsiveSettingsCss = `
 @media(prefers-reduced-motion:reduce) {
   .settings-panel input[type="checkbox"], .settings-panel input[type="checkbox"]::before { transition:none; }
 }
+
+/* V2 — grouped settings, with a permanent search and intuitive visual hierarchy. */
+.settings-panel .sp-top { position:relative; z-index:2; background:#1c252e;
+  padding:13px 14px 12px; box-shadow:0 6px 20px #080c102f; }
+.sp-search { box-shadow:0 2px 6px #0002 inset; }
+.sp-search:focus-visible { outline:2px solid #a3e635; outline-offset:1px; }
+.sp-pages { gap:6px; margin-top:14px; padding-bottom:7px; }
+.sp-pages button { box-shadow:none; transition:background-color .16s ease,border-color .16s ease; }
+.sp-pages button:not(.on):hover { background:#354451; border-color:#526271; }
+.sp-modes { border:1px solid #2e3b47; background:#131b23; gap:2px; }
+.sp-modes button.on { box-shadow:0 2px 8px #0003; background:#334a2d; }
+.sp-body { scrollbar-gutter:stable; }
+.sp-body > section, .sp-body > h2 + section {
+  margin:0 0 12px; padding:12px; background:#222d37; border:1px solid #354550;
+  border-radius:13px; box-shadow:0 5px 16px #080b101a; }
+.sp-body section h3 { display:flex; gap:7px; align-items:center; margin:0 0 8px; padding:0 0 10px;
+  color:#edf3f7; font-size:12px; letter-spacing:.005em; border-bottom:1px solid #364650; }
+.sp-body section h3 .muted { font-size:10px; font-weight:400; }
+.sp-body .row { padding:11px 2px; border-bottom:1px solid #34414c; }
+.sp-body .row:last-child { border-bottom:0; }
+.sp-body .row .lbl { color:#eef4f8; font-weight:650; font-size:12px; }
+.sp-body .row .key { margin-top:1px; color:#879bab; font-size:10px; }
+.sp-body .row .widget-cell { max-width:100%; }
+.sp-body .row .badge { opacity:.85; border-radius:6px; letter-spacing:.01em; }
+.sp-body .row input:not([type="checkbox"]):not([type="color"]):hover,
+.sp-body .row select:hover, .sp-body .row textarea:hover { border-color:#506472; }
+.sp-body .row input:not([type="checkbox"]):not([type="color"]):focus,
+.sp-body .row select:focus, .sp-body .row textarea:focus { border-color:#a3e635; }
+.sp-body .row input[type="checkbox"]:focus-visible { outline:2px solid #a3e635; outline-offset:3px; }
+.sp-body .row .reset-btn { background:#3e3529; color:#f5c983; }
+.sp-body .row .reset-btn:hover { background:#5a4630; }
+.sp-body .row.custom { background:#27323c; border-radius:7px; padding:8px; }
+@media(max-width:767px) {
+  :host(.sp-embedded) .sp-top { padding:12px 12px 11px; }
+  :host(.sp-embedded) .sp-body { padding:10px 10px 26px; }
+  .sp-body > section, .sp-body > h2 + section { padding:10px; margin-bottom:10px; }
+  .settings-panel .row { min-height:64px; }
+  .settings-panel .row .widget-cell { gap:4px; }
+  .sp-body .row .lbl { font-size:12px; }
+  .settings-panel .row input:not([type="checkbox"]):not([type="color"]),
+  .settings-panel .row select { min-height:38px; }
+  .settings-panel .row .key { font-size:9px; }
+}
+@media(min-width:768px) {
+  .settings-panel .sp-top { padding-inline:16px; }
+  :host(.sp-embedded) .sp-body { padding:14px 16px 35px; }
+}
 `
 
 function applyPreset(base, preset, keys, idKey, name) {
