@@ -22,27 +22,32 @@ const ad4Catalog = { ...bundledCatalog,
 }
 const responsiveViewerCss = `
 .app-body { padding-bottom: var(--demo-preview-bottom, 0px); }
-.stats-card { left: 60px; bottom: calc(var(--demo-preview-bottom, 0px) + 32px); }
+.stats-card { left: 12px; top: 12px; bottom: auto; max-height: min(55%, 420px); overflow-y: auto; }
 .stats-card .stats-toggle { display:block; width:100%; padding:2px 4px; border:0; background:transparent; color:var(--_accent-on-dark); font:600 12px/1.5 system-ui; text-align:left; cursor:pointer; }
 .stats-card.is-collapsed > :not(.stats-toggle) { display:none !important; }
 .stats-card.is-collapsed { padding:5px 9px; }
-.ad4-topbar { display:flex; align-items:center; gap:8px; margin-left:auto; white-space:nowrap; font:11px/1.2 system-ui,sans-serif; }
+.ad4-topbar { display:flex; align-items:center; gap:6px; margin-left:auto; white-space:nowrap; font:11px/1.2 system-ui,sans-serif; }
+.ad4-printer-state { display:inline-flex; align-items:center; gap:5px; min-width:0; padding:4px 7px; border:1px solid var(--_dark-border); border-radius:7px; background:var(--_dark-control); color:var(--_dark-text-muted); }
+.ad4-printer-state .state-dot { width:6px; height:6px; flex:0 0 6px; border-radius:50%; background:#ef826a; }
+.ad4-printer-state .state-dot.is-online { background:var(--_accent); }
 .ad4-topbar .camera-trigger { position:static; display:grid; place-items:center; width:30px; height:30px; padding:5px; border:1px solid var(--_dark-border); border-radius:6px; background:var(--_dark-control); color:var(--_accent-on-dark); cursor:pointer; }
 .ad4-topbar .camera-trigger svg { width:18px; height:18px; }
 @media (max-width: 767px) {
   .app-shell { font-size: 12px; }
-  .topbar { flex: 0 0 118px; height: 118px; display: grid; grid-template-columns: minmax(0,1fr) auto;
-    grid-template-rows: 36px 34px 34px; gap: 3px 8px; padding: 3px 8px; }
-  .topbar:has(.tb-gcode) { flex-basis: 154px; height: 154px; grid-template-rows: 36px 34px 34px 34px; }
-  .topbar .tb-left { grid-column: 1 / -1; grid-row: 1; min-width: 0; width: 100%; flex: none;
+  .topbar { flex: 0 0 80px; height: 80px; display: grid; grid-template-columns: minmax(0,1fr) auto;
+    grid-template-rows: 36px 34px; gap: 3px 6px; padding: 3px 8px; }
+  .topbar:has(.tb-gcode) { flex-basis: 116px; height: 116px; grid-template-rows: 36px 34px 34px; }
+  .topbar .tb-left { grid-column: 1; grid-row: 1; min-width: 0; width: 100%; flex: none;
     overflow-x: auto; scrollbar-width: none; gap: 5px; }
+  .topbar .tb-left .tb-btn:disabled { display:none; }
   .topbar .tb-left::-webkit-scrollbar { display: none; }
   .topbar .tb-left > * { flex: 0 0 auto; }
   .topbar .tb-tabs { grid-column: 1; grid-row: 2; justify-self: start; }
   .topbar .tb-right { grid-column: 2; grid-row: 2; min-width: 0; flex: none; gap: 5px; }
-  .topbar .tb-gcode { grid-column: 1 / -1; grid-row: 4; min-width: 0; overflow: hidden; }
-  .topbar .ad4-topbar { grid-column: 1 / -1; grid-row: 3; justify-self:end; min-width:0; }
-  .ad4-topbar .ad4-printer-state { overflow:hidden; text-overflow:ellipsis; }
+  .topbar .tb-gcode { grid-column: 1 / -1; grid-row: 3; min-width: 0; overflow: hidden; }
+  .topbar .ad4-topbar { grid-column: 2; grid-row: 1; justify-self:end; margin:0; min-width:0; }
+  .ad4-topbar .ad4-printer-state { max-width: 136px; overflow:hidden; }
+  .ad4-topbar .ad4-printer-state .state-text { overflow:hidden; text-overflow:ellipsis; }
   .topbar .tb-gcode span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tb-logo { font-size: 12px; white-space: nowrap; }
   .tb-btn { padding: 5px 7px; font-size: 11px; white-space: nowrap; }
@@ -54,7 +59,13 @@ const responsiveViewerCss = `
   .vp-top-toolbar button { width: 30px; height: 30px; }
   .plate-bar { right: 8px; bottom: 96px; max-width: calc(100% - 16px); overflow-x: auto; }
   .brush-panel { top: 50px; left: 6px; width: min(214px, calc(100% - 12px)); }
-  .stats-card, .bed-warn { left: 8px; bottom: max(96px, calc(var(--demo-preview-bottom, 0px) + 8px)); max-width: min(48%, 190px); font-size: 11px; }
+  .stats-card { left:8px; top:8px; bottom:auto; max-width:min(70%, 260px); max-height:45%; font-size:11px; }
+  .bed-warn { left:8px; bottom:max(96px, calc(var(--demo-preview-bottom, 0px) + 8px)); max-width:min(48%,190px); font-size:11px; }
+}
+@media (max-width: 380px) {
+  .topbar .tb-re { display:none; }
+  .ad4-topbar .ad4-printer-state { max-width:110px; }
+  .ad4-topbar .camera-trigger { width:28px; height:28px; }
 }
 @media (min-width: 768px) and (max-width: 1100px) {
   .sidebar { flex-basis: min(300px, 35vw); width: min(300px, 35vw); }
@@ -435,7 +446,10 @@ export default function Demo() {
     </div>
 
     {toolbarTarget && createPortal(<>
-      <span className="ad4-printer-state">Adventurer 4 · {printerState}</span>
+      <span className="ad4-printer-state" title={`Adventurer 4 · ${printerState}`} aria-label={`Adventurer 4 · ${printerState}`}>
+        <strong>AD4</strong><span className={`state-dot${printerState === 'Sin conexión' ? '' : ' is-online'}`} />
+        <span className="state-text">{printerState}</span>
+      </span>
       <button ref={cameraButton} className="camera-trigger" type="button" title="Ver captura de la cámara de la impresora"
         aria-label="Ver cámara de la impresora" onClick={() => setCameraOpen(true)}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -447,8 +461,8 @@ export default function Demo() {
 
     <div className="ad4-controls">
       <label><input type="checkbox" checked={autoSlice} onChange={event => setAutoSlice(event.target.checked)} /> Auto slice</label>
-      {sliced ? <div className="ad4-print"><button disabled={sending} onClick={() => sendPrint(true)}>{sending ? 'Enviando…' : 'Imprimir'}</button>
-        <button disabled={sending} onClick={() => sendPrint(false)} title="Enviar sin iniciar impresión">▾ Solo enviar</button></div>
+      {sliced ? <div className="ad4-print" role="group" aria-label="Enviar trabajo a la Adventurer 4"><button disabled={sending} onClick={() => sendPrint(true)}>{sending ? 'Enviando…' : 'Imprimir'}</button>
+        <button disabled={sending} onClick={() => sendPrint(false)} title="Enviar sin iniciar impresión">Solo enviar</button></div>
         : <button onClick={() => setSliceRequest(value => value + 1)} disabled={!objects}>Laminar</button>}
     </div>
 
@@ -487,9 +501,11 @@ export default function Demo() {
       <nav className="mobile-nav" aria-label="Acciones rápidas">
         <button className="nav-setting" onClick={() => setDrawer(true)}><span aria-hidden="true">☷</span>Ajustes</button>
         <span className="nav-status" aria-live="polite">{progressText}</span>
-        <label className="nav-auto"><input type="checkbox" checked={autoSlice} onChange={event => setAutoSlice(event.target.checked)} />Auto slice</label>
-        <button className="nav-slice" disabled={sending || (!sliced && !objects)} onClick={() => sliced ? sendPrint(true) : setSliceRequest(value => value + 1)}>{sending ? 'Enviando…' : sliced ? 'Imprimir' : 'Laminar'}</button>
-        {sliced && <button className="nav-send" disabled={sending} onClick={() => sendPrint(false)}>Solo enviar</button>}
+        <label className="nav-auto"><input type="checkbox" role="switch" checked={autoSlice} onChange={event => setAutoSlice(event.target.checked)} /><span>Auto slice</span></label>
+        {sliced ? <div className="nav-print-group" role="group" aria-label="Acciones de impresión">
+          <button className="nav-slice" disabled={sending} onClick={() => sendPrint(true)}>{sending ? 'Enviando…' : 'Imprimir'}</button>
+          <button className="nav-send" disabled={sending} onClick={() => sendPrint(false)}>Solo enviar</button>
+        </div> : <button className="nav-slice" disabled={!objects} onClick={() => setSliceRequest(value => value + 1)}>Laminar</button>}
       </nav>
       {drawer && <div className="drawer-scrim" onClick={() => setDrawer(false)} />}
       <section className={`settings-drawer${drawer ? ' is-open' : ''}`} role="dialog" aria-modal="true" aria-label="Ajustes del laminado">
