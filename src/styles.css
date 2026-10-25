@@ -24,8 +24,30 @@ html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; }
 .viewport-host { position: absolute; inset: 0; overflow: hidden; }
 .mobile-nav, .settings-drawer, .drawer-scrim { display: none; }
 button:focus-visible, select:focus-visible { outline: 2px solid #a7e43d; outline-offset: 2px; }
+.camera-trigger { position: absolute; z-index: 14; left: 5px; bottom: 18px; width: 38px; height: 38px; padding: 8px;
+  display: grid; place-items: center; border: 1px solid #46535a; border-radius: 9px; background: #283321; color: #bdf079;
+  box-shadow: 0 3px 14px #0006; cursor: pointer; }
+.camera-trigger svg { width: 21px; height: 21px; }
+.camera-trigger:hover { background: #35452a; border-color: #a7e43d; }
+.camera-backdrop { position: absolute; z-index: 40; inset: 0; display: grid; place-items: center; padding: 18px;
+  background: #06090dd4; backdrop-filter: blur(5px); }
+.camera-modal { width: min(680px, 100%); max-height: calc(100dvh - 36px); overflow-y: auto; padding: 18px;
+  border: 1px solid #45505b; border-radius: 16px; background: #1b2027; box-shadow: 0 20px 60px #000a; }
+.camera-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.camera-eyebrow { color: #b5e36d; font-size: 10px; font-weight: 750; letter-spacing: .1em; }
+.camera-head h2 { margin: 4px 0 0; font-size: 18px; }
+.camera-close { flex: 0 0 34px; width: 34px; height: 34px; border: 1px solid #47515d; border-radius: 8px; background: #282f38; color: #eef2f4; font-size: 23px; line-height: 1; cursor: pointer; }
+.camera-frame { margin: 0; overflow: hidden; border: 1px solid #414c56; border-radius: 10px; background: #11161b; }
+.camera-frame img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: contain; }
+.camera-frame figcaption { padding: 8px 12px; color: #bdc7d0; font-size: 11px; }
+.camera-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; color: #a9b4bf; font-size: 11px; }
+.camera-foot button { border: 1px solid #648736; border-radius: 8px; background: #a7e43d; color: #17200d; padding: 8px 12px; font: 700 12px/1.2 system-ui,sans-serif; cursor: pointer; }
 
 @media (max-width: 767px) {
+  .camera-trigger { bottom: 102px; left: 5px; width: 38px; height: 38px; }
+  .camera-modal { padding: 13px; border-radius: 13px; }
+  .camera-head h2 { font-size: 16px; }
+  .camera-foot { align-items: flex-start; flex-direction: column; gap: 9px; }
   .mobile-nav {
     position: absolute; z-index: 12; left: 0; right: 0; bottom: 0;
     min-height: 88px; padding: 8px max(12px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
