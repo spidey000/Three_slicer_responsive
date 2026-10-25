@@ -20,6 +20,7 @@ En la primera publicación, configura una vez **Settings → Pages → Build and
 - Vista previa de trayectorias, navegación por capas, estadísticas de impresión y exportación desde los controles originales.
 - Apertura y vista previa de G-code y proyectos de resina compatibles, con las opciones que soporta el paquete.
 - En móvil, el panel lateral se convierte en un cajón de ajustes. El resto de acciones continúa usando los componentes nativos del visor.
+- Un icono de cámara abre una captura de ejemplo con marca de agua; la [integración de webcam](./docs/WEBCAM_INTEGRACION.md) contiene el contrato ficticio para recibir JPEG/PNG de la impresora.
 
 La demo mantiene un único estado de configuración compartido entre perfiles, `SettingsPanel` y `Viewport`. El botón móvil **Laminar** envía una solicitud al visor real; el archivo G-code se exporta desde los controles nativos.
 
