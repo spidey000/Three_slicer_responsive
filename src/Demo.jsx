@@ -127,6 +127,7 @@ const responsiveViewerCss = `
 @media(prefers-reduced-motion:reduce) { .stats-chevron, .tb-btn { transition:none; } }
 
 /* V2: true canvas-first mobile composition; the upstream actions remain mounted and functional. */
+.app-body { position:relative; }
 .topbar .tb-btn, .topbar .tb-icon, .camera-trigger { box-shadow:0 1px 0 #ffffff08 inset; }
 .empty-hint { width:min(370px,calc(100% - 32px)); height:auto; min-height:0;
   position:absolute; top:48%; left:50%; right:auto; bottom:auto; inset:auto;
