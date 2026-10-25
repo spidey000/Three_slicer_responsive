@@ -10,6 +10,7 @@ import {
 import { schema, uiTree } from 'three-slicer/data'
 import { makeCfg, disabledKeys } from 'three-slicer/toggle'
 import './step_loader.js'
+import PrinterManager from './PrinterManager.jsx'
 import { AD4_STOCK_PROCESS, AD4_SAFE_PROCESS, applyAd4SafeMachineLimits, applyAd4SafeProcess } from './ad4SafeProfile.js'
 import {
   SAVE_PROCESS_OPTION, SAVE_FILAMENT_OPTION, ARTILLERY_PLA_BASIC,
@@ -70,6 +71,8 @@ const responsiveViewerCss = `
 .ad4-printer-state .state-dot { width:7px; height:7px; flex:0 0 7px; border-radius:50%; background:#fb806d; box-shadow:0 0 0 2px #fb806d18; }
 .ad4-printer-state .state-dot.is-online { background:#a3e635; box-shadow:0 0 0 2px #a3e63522; }
 .ad4-printer-state .state-text { overflow:hidden; text-overflow:ellipsis; }
+.ad4-printer-state { font:inherit; cursor:pointer; }
+.ad4-printer-state:hover { background:#34414d; border-color:#668d3e; }
 .ad4-topbar .camera-trigger { position:static; display:grid; place-items:center; flex:0 0 36px;
   width:36px; height:36px; padding:6px; border:1px solid #35434e; border-radius:10px;
   background:#26303a; color:#bced70; cursor:pointer; }
@@ -386,6 +389,7 @@ export default function Demo() {
   const [printerState, setPrinterState] = useState('Disconnected')
   const [cameraSrc, setCameraSrc] = useState(null)
   const [cameraOpen, setCameraOpen] = useState(false)
+  const [managerOpen, setManagerOpen] = useState(false)
   const [testCapturedAt, setTestCapturedAt] = useState(() => new Date())
   const cameraButton = useRef(null)
   const cameraClose = useRef(null)
@@ -866,7 +870,7 @@ export default function Demo() {
             only={{ builder: 'TabFilament::add_filament_overrides_page' }} {...panelData} />
         </>}
         panels={panels}
-        features={cameraOpen ? { shortcuts: false } : undefined}
+        features={cameraOpen || managerOpen ? { shortcuts: false } : undefined}
         sliceRequest={sliceRequest}
         onEvent={(event) => {
           if (event.type === 'progress') setProgress(event.value)
@@ -903,10 +907,10 @@ export default function Demo() {
     </div>
 
     {toolbarTarget && createPortal(<>
-      <span className="ad4-printer-state" title={`Adventurer 4 · ${printerState}`} aria-label={`Adventurer 4 · ${printerState}`}>
+      <button type="button" className="ad4-printer-state" onClick={() => setManagerOpen(true)} title={`Adventurer 4 · ${printerState}`} aria-label={`Adventurer 4 · ${printerState}`}>
         <strong>AD4</strong><span className={`state-dot${printerState === 'Disconnected' ? '' : ' is-online'}`} />
         <span className="state-text">{printerState}</span>
-      </span>
+      </button>
       <button ref={cameraButton} className="camera-trigger" type="button" title="View a printer camera snapshot"
         aria-label="View printer camera" onClick={() => setCameraOpen(true)}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -954,6 +958,8 @@ export default function Demo() {
         <span className="playback-count">{preview.hasMoves ? `${preview.move} / ${preview.max}` : 'No FFF nozzle path'}</span>
       </div>
     </section>}
+
+    {managerOpen && <PrinterManager onClose={() => setManagerOpen(false)} />}
 
     {cameraOpen && <div className="camera-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setCameraOpen(false) }}>
       <section className="camera-modal" role="dialog" aria-modal="true" aria-labelledby="camera-title">

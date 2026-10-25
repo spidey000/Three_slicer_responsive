@@ -127,6 +127,25 @@ async function checkWidth(width) {
       if (!savedProcess || !savedMaterial) throw new Error('Custom profiles did not survive a reload')
       await page.screenshot({ path: `${output}/saved-profiles-mobile-${width}.png`, fullPage: true })
       await page.locator('.close-drawer').click()
+      // The AD4 status control must open the real responsive manager, even when
+      // GitHub Pages correctly has no backend to execute physical commands.
+      await page.locator('button.ad4-printer-state').click()
+      const manager = page.locator('.pm-overlay')
+      await manager.waitFor({ state: 'visible', timeout: 10000 })
+      if (!(await manager.textContent()).includes('Gestión de impresora')) {
+        throw new Error('AD4 printer manager not rendered')
+      }
+      const mobileManager = await page.evaluate(() => {
+        const panel = document.querySelector('.pm-window')
+        const frame = panel?.getBoundingClientRect()
+        return frame && { left: frame.left, right: frame.right, width: innerWidth }
+      })
+      if (!mobileManager || mobileManager.left < -2 || mobileManager.right > width + 2) {
+        throw new Error('Printer manager clipped at 390px: ' + JSON.stringify(mobileManager))
+      }
+      await page.screenshot({ path: output + '/printer-manager-mobile-' + width + '.png', fullPage: true })
+      await page.locator('.pm-back').click()
+
     }
 
     const tolerance = 2
