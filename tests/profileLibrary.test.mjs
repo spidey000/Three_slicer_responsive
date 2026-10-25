@@ -15,7 +15,10 @@ const makeStorage = () => {
     raw: key => map.get(key),
   }
 }
-const num = v => Number(Array.isArray(v) ? v[0] : v)
+const num = v => {
+  const value = Array.isArray(v) ? v[0] : v
+  return typeof value === 'string' && value.trim().endsWith('%') ? Number(value.trim().slice(0, -1)) : Number(value)
+}
 
 test('all bundled AD4 process profiles inherit the same conservative motion settings', () => {
   const presets = [
