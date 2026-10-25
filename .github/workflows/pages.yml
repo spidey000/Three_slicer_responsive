@@ -49,6 +49,7 @@ jobs:
     name: Verify deployed mobile layout
     needs: deploy
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -59,7 +60,7 @@ jobs:
       - name: Install Playwright browser
         run: |
           npm install --no-save --no-package-lock playwright@1.56.1
-          npx playwright install --with-deps chromium
+          npx playwright install chromium
       - name: Check live Pages on mobile viewports
         env:
           PAGES_URL: https://spidey000.github.io/Three_slicer_responsive/
