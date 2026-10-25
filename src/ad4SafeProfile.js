@@ -47,7 +47,19 @@ export const AD4_SAFE_PROCESS_OVERRIDES = Object.freeze({
 })
 
 export function applyAd4SafeMachineLimits(printerPreset) {
-  return { ...printerPreset, ...AD4_SAFE_MACHINE_LIMITS }
+  // The upstream printer's end G-code parks at F9000 = 150 mm/s regardless
+  // of the process travel setting. Keep Flashforge commands intact; only slow
+  // down the two explicit end-of-print feedrates for the conservative default.
+  const endGcode = typeof printerPreset?.machine_end_gcode === 'string'
+    ? printerPreset.machine_end_gcode
+      .replace('G1 E-3 F3600', 'G1 E-3 F2400')
+      .replace('G0 X50 Y50 F9000', 'G0 X50 Y50 F4800')
+    : printerPreset?.machine_end_gcode
+  return {
+    ...printerPreset,
+    ...AD4_SAFE_MACHINE_LIMITS,
+    ...(endGcode == null ? {} : { machine_end_gcode: endGcode }),
+  }
 }
 
 export function applyAd4SafeProcess(orcaStandardPreset) {
