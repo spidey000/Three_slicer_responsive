@@ -162,6 +162,10 @@ class Handler(SimpleHTTPRequestHandler):
             raise ValueError('Se requiere JSON')
         return json.loads(self.rfile.read(size))
 
+    def do_HEAD(self):
+        # Do not leak static file metadata through an unauthenticated inherited handler.
+        self.send_error(405, 'HEAD not supported')
+
     def do_GET(self):
         if not self.request_authorized():
             return self.json(401 if ACCESS_CONFIG else 403, {'error': 'Unauthorized request'})
