@@ -76,11 +76,11 @@ export default function PrinterManager({ onClose }) {
       const results = await Promise.allSettled([api('/status'), api('/files'), api('/profiles'), api('/timelapse')])
       if (results[0].status === 'fulfilled') setState(results[0].value)
       else { setState(null); setError(results[0].reason.message) }
-      if (results[1].status === 'fulfilled') setFiles(results[1].value)
-      if (results[2].status === 'fulfilled') setProfiles(results[2].value)
+      setFiles(results[1].status === 'fulfilled' ? results[1].value : [])
+      setProfiles(results[2].status === 'fulfilled' ? results[2].value : [])
       if (results[3].status === 'fulfilled') setTimelapse(results[3].value)
     } catch {
-      setBridge(false); setState(null)
+      setBridge(false); setState(null); setFiles([]); setProfiles([])
       setError('Este sitio no tiene conexión con el puente local. GitHub Pages solo permite laminar; inicia npm run local en el equipo conectado a la impresora.')
     }
   }
@@ -163,7 +163,7 @@ export default function PrinterManager({ onClose }) {
           <Card icon="network" title="Descubrir impresoras" right={<button className="pm-small" disabled={!bridge || !!busy} onClick={discover}><Icon name="refresh"/> Buscar</button>}>
             <p className="pm-subtle">Detecta dispositivos anunciados en la red del equipo que ejecuta el puente.</p>
             {devices.length ? <div className="pm-list">{devices.map(d => <div className="pm-list-item" key={d.ip}><div><strong>{d.name || 'Impresora'}</strong><small>{d.ip} · puerto {d.port}</small></div>
-              <button type="button" className="pm-small" disabled={!!busy || !bridge || d.port !== 8899 || (session?.host === d.ip && !profileSelection)} onClick={() => run('Conectar', () => post('/selection', { host: d.ip }), refreshAll)}>{session?.host === d.ip && !profileSelection ? 'Conectada' : 'Conectar'}</button></div>)}</div> : <p className="pm-empty">Pulsa Buscar para localizar impresoras.</p>}
+              <button type="button" className="pm-small" disabled={!!busy || !bridge || d.port !== 8899 || (session?.host === d.ip && !profileSelection)} onClick={() => run('Conectar', () => post('/selection', { host: d.ip }), async () => { setCamera(''); await refreshAll() })}>{session?.host === d.ip && !profileSelection ? 'Conectada' : 'Conectar'}</button></div>)}</div> : <p className="pm-empty">Pulsa Buscar para localizar impresoras.</p>}
           </Card>
           <Card icon="file" title="Archivos de la impresora" right={<button type="button" className="pm-small" disabled={!bridge || !!busy} onClick={() => run('Actualizar archivos', () => api('/files'), setFiles)}>Actualizar</button>}>
             {files.length ? <div className="pm-list">{files.map(f => <div className="pm-list-item" key={f}><div><strong title={f}>{fileName(f)}</strong><small>{f}</small></div>
@@ -198,7 +198,7 @@ export default function PrinterManager({ onClose }) {
           <Card icon="layers" title="Perfiles de conexión">
             <p className="pm-subtle">Perfiles de host/IP del CLI. No modifican los presets de calidad del laminador.</p>
             {profiles.length ? <div className="pm-list">{profiles.map(p => <div key={p} className="pm-list-item"><div><strong>{p}</strong><small>{profileSelection === p ? 'Activo' : 'Perfil del CLI'}</small></div>
-              <div className="pm-inline"><button className="pm-small" disabled={!!busy || profileSelection === p} onClick={() => run('Seleccionar perfil', () => post('/selection', { profile: p }), refreshAll)}>Usar</button>
+              <div className="pm-inline"><button className="pm-small" disabled={!!busy || profileSelection === p} onClick={() => run('Seleccionar perfil', () => post('/selection', { profile: p }), async () => { setCamera(''); await refreshAll() })}>Usar</button>
                 <button className="pm-small pm-danger" disabled={!!busy} onClick={() => { if (window.confirm('¿Eliminar el perfil de conexión ' + p + '?')) run('Eliminar perfil', () => post('/profiles/delete', { name: p }), refreshAll) }}>×</button></div></div>)}</div> : <p className="pm-empty">No hay perfiles guardados.</p>}
             <div className="pm-inputs"><input maxLength={64} aria-label="Nombre del perfil" placeholder="Nombre del perfil" value={profileName} onChange={e => setProfileName(e.target.value)}/><input inputMode="decimal" aria-label="IP local de la impresora" placeholder="IP local (192.168.x.x)" value={profileHost} onChange={e => setProfileHost(e.target.value)}/></div>
             <button className="pm-small" disabled={!bridge || !!busy || !profileName.trim() || !profileHost.trim()} onClick={() => run('Guardar perfil', () => post('/profiles', { name: profileName, host: profileHost }), async () => { setProfileName(''); setProfileHost(''); await refreshAll() })}>+ Guardar perfil</button>
