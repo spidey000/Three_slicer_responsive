@@ -847,9 +847,9 @@ export default function Demo() {
           onClick={() => selectLayer(preview.layer, !preview.single)} title="Show only this layer">Single layer</button>
       </div>
       <div className="playback-actions">
-        <button type="button" disabled={!preview.hasMoves} onClick={() => playPlayback(1)} aria-label="Play toolpath" title="Reproducir" className="playback-primary">▶</button>
+        <button type="button" disabled={!preview.hasMoves} onClick={() => playPlayback(1)} aria-label="Play toolpath" title="Play" className="playback-primary">▶</button>
         <button type="button" className="playback-extra" disabled={!preview.hasMoves} onClick={() => playPlayback(8)} aria-label="Fast-forward toolpath" title="Fast-forward ×8">⏩</button>
-        <button type="button" className="playback-extra" disabled={!preview.hasMoves} onClick={pausePlayback} aria-label="Pause toolpath" title="Pausar">Ⅱ</button>
+        <button type="button" className="playback-extra" disabled={!preview.hasMoves} onClick={pausePlayback} aria-label="Pause toolpath" title="Pause">Ⅱ</button>
         <button type="button" className="playback-extra" disabled={!preview.hasMoves} onClick={stopPlayback} aria-label="Stop and return to start" title="Stop and return to start">■</button>
         <label className="playback-extra" htmlFor="preview-move">Movement</label>
         <input id="preview-move" type="range" disabled={!preview.hasMoves} min="0" max={Math.max(1, preview.max)} value={Math.min(preview.move, Math.max(1, preview.max))}
@@ -864,7 +864,7 @@ export default function Demo() {
           <button ref={cameraClose} type="button" className="camera-close" onClick={() => setCameraOpen(false)} aria-label="Close camera">×</button></header>
         <figure className="camera-frame"><img src={cameraSrc || `${import.meta.env.BASE_URL}webcam-test.svg`} alt={cameraSrc ? 'Adventurer 4 snapshot' : 'Printer camera placeholder image'} />
           <figcaption>{cameraSrc ? 'Latest Adventurer 4 snapshot' : 'Demo image · Camera unavailable'}</figcaption></figure>
-        <footer className="camera-foot"><span>Camera checked: {testCapturedAt.toLocaleString('es-ES')}</span>
+        <footer className="camera-foot"><span>Camera checked: {testCapturedAt.toLocaleString('en-US')}</span>
           <button type="button" onClick={captureCamera}>{cameraSrc ? 'Refresh snapshot' : 'Retry camera'}</button></footer>
       </section>
     </div>}
@@ -884,7 +884,7 @@ export default function Demo() {
         </div> : <button className="nav-slice" disabled={!objects} onClick={() => setSliceRequest(value => value + 1)}>Slice</button>}
       </nav>
       {drawer && <div className="drawer-scrim" onClick={() => setDrawer(false)} />}
-      <section className={`settings-drawer${drawer ? ' is-open' : ''}`} role="dialog" aria-modal="true" aria-label="Ajustes del laminado">
+      <section className={`settings-drawer${drawer ? ' is-open' : ''}`} role="dialog" aria-modal="true" aria-label="Slicing settings">
         <div className="drawer-handle" />
         <header className="drawer-header"><div><span className="drawer-kicker">Print configuration</span><strong>Slicing settings</strong><small>Presets, material and advanced parameters</small></div>
           <button className="close-drawer" onClick={() => setDrawer(false)} aria-label="Close settings">×</button></header>
