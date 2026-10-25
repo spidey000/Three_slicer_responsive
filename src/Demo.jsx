@@ -11,7 +11,7 @@ import { schema, uiTree } from 'three-slicer/data'
 import { makeCfg, disabledKeys } from 'three-slicer/toggle'
 import './step_loader.js'
 import PrinterManager from './PrinterManager.jsx'
-import { AD4_STOCK_PROCESS, AD4_SAFE_PROCESS, applyAd4SafeMachineLimits, applyAd4SafeProcess } from './ad4SafeProfile.js'
+import { AD4_STOCK_PROCESS, AD4_SAFE_PROCESS, AD4_SAFE_PROCESS_OVERRIDES, applyAd4SafeMachineLimits, applyAd4SafeProcess } from './ad4SafeProfile.js'
 import {
   SAVE_PROCESS_OPTION, SAVE_FILAMENT_OPTION, ARTILLERY_PLA_BASIC,
   browserProfileStorage, readProfileLibrary, writeProfileLibrary, addCustomProfile, replaceCustomProfile, removeCustomProfile,
@@ -841,6 +841,18 @@ export default function Demo() {
     } catch (error) { setProfileNotice(error.message || 'Could not delete profile.') }
   }
 
+  // The upstream desktop process selector is still mounted inside Viewport.
+  // Normalize its bundled AD4 preset changes as well, without rewriting manual edits
+  // or the intentionally independent saved custom process snapshots.
+  const setSlicerSettings = update => setSettings(current => {
+    const next = typeof update === 'function' ? update(current) : update
+    if (!next || typeof next !== 'object') return current
+    const changedProcess = next.print_settings_id && next.print_settings_id !== current.print_settings_id
+    const bundled = changedProcess && catalog?.process.listFor(AD4).includes(next.print_settings_id)
+    const custom = profileLibrary.process.some(p => p.name === next.print_settings_id)
+    return bundled && !custom ? { ...next, ...AD4_SAFE_PROCESS_OVERRIDES } : next
+  })
+
   // Keep the native preview controls mounted in the hidden mobile sidebar: the
   // dock below drives those same inputs, so Three Slicer's GPU toolpath and nozzle stay authoritative.
   const panels = { printerCard: false, sliceBar: false, ...(mobile ? { filamentCard: false, objectList: false,
@@ -857,7 +869,7 @@ export default function Demo() {
         slicer={slicer}
         catalog={ad4Catalog}
         settings={settings}
-        setSettings={setSettings}
+        setSettings={setSlicerSettings}
         plateSettings={plateSettings}
         setPlateSettings={setPlateSettings}
         processPanel={processPanel}
