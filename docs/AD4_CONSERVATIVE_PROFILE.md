@@ -2,7 +2,7 @@
 
 This project defaults to **`0.20mm Quality (Conservative) @Flashforge AD4 0.4 Nozzle`**, a local quality-oriented *process* based on the stock OrcaSlicer `0.20mm Standard @Flashforge AD4 0.4 Nozzle`. It is selected on startup for the **standard 0.4 mm nozzle**, even if high-speed firmware is installed.
 
-The unmodified stock OrcaSlicer process is still available in the Process selector. This project does not change the upstream npm package, alter the printer firmware, or claim to certify a mechanical limit. Process options remain editable.
+All bundled process presets compatible with the fixed Adventurer 4 use the **same cautious speed/acceleration overlay** when selected. The original OrcaSlicer entries remain available by name, but their motion settings are intentionally normalized; other parameters such as layer height are preserved. **Named custom processes** are the exception: they restore exactly the process values that you saved, including deliberate speed changes. No upstream npm package or printer firmware is modified.
 
 ## Why this deliberately slower profile?
 
@@ -28,8 +28,10 @@ The unmodified stock OrcaSlicer process is still available in the Process select
 | Support | 100 | **50** |
 | Support interface | 80 | **40** |
 | Travel | 80 | **80** |
-| Bridge | 25 | **25**, inherited |
-| Skirt | 20 | **20**, inherited |
+| Ironing | 15 | **15** |
+| Small perimeter | 50% | **50% of outer wall** |
+| Bridge | 25 | **25** |
+| Skirt | 20 | **20** |
 
 ### Process accelerations (mm/s²)
 
@@ -43,6 +45,8 @@ The unmodified stock OrcaSlicer process is still available in the Process select
 | Solid infill | 1000 | **650** |
 | Top surface | 50 | **400** |
 | Travel | 5000 | **1000** |
+| First-layer travel | inherited | **500** |
+| Bridge | inherited | **500** |
 
 **These acceleration values are intentionally conservative engineering starting points, not manufacturer-certified quality limits.** We did not find a reliable official low-speed/normal-firmware AD4 quality acceleration table. Verify behavior with a first-layer test, calibration cube and a small print while observing the actual machine.
 
@@ -67,9 +71,11 @@ The conservative speed values apply regardless of material. Material temperature
 
 - The app loads the standard AD4 0.4 mm machine profile from `three-slicer@0.4.0` and applies the conservative machine overlay in `src/ad4SafeProfile.js`.
 - After the process and filament catalogs finish loading, it merges the conservative values into the original **0.20 mm Standard** process and sets a distinct conservative process name.
-- Selecting a different process resets process-specific keys and applies that upstream preset; choosing the conservative profile restores the slow settings. Machine ceilings remain conservative for this AD4 application.
-- The original Orca process is preserved in the dropdown for explicit comparison.
-- Regression tests run with `node --test tests/ad4SafeProfile.test.mjs` before the GitHub Pages production build.
+- Selecting any bundled AD4 process resets its process-specific keys, then overlays the **same conservative motion values**, while retaining profile-specific layer height, geometry and other non-motion settings.
+- Selecting a custom saved process instead restores precisely the saved process-key snapshot, without forcibly replacing the user's chosen velocities.
+- The app includes an additional `Artillery PLA Basic @Flashforge AD4` material based on Generic PLA: 205°C nozzle (210°C initial layer), 55°C bed, 1.75 mm diameter, flow ratio 1.0, maximum volumetric speed 10 mm³/s, and pressure advance disabled until calibration. Artillery states a 190–220°C nozzle range; 55°C bed and 10 mm³/s are cautious setup choices, not a certified optimum.
+- A user can select **Save current settings as new profile…** from Process or Material, name it, and save it in localStorage. Saved presets remain selectable across page reloads on the *same browser and same site origin*; they do not automatically synchronize between GitHub Pages and localhost. The UI also offers Update saved and Delete.
+- Regression tests run with `node --test tests/*.test.mjs` before the GitHub Pages production build.
 
 ## Sources
 
@@ -80,3 +86,6 @@ The conservative speed values apply regardless of material. Material temperature
 5. [Tom's Hardware — AD4 FlashPrint Standard at 60 mm/s](https://www.tomshardware.com/reviews/flashforge-adventurer-4-3d-printer-review)
 6. [OrcaSlicer official 0.20 mm Standard AD4 0.4 nozzle process](https://github.com/OrcaSlicer/OrcaSlicer/blob/main/resources/profiles/Flashforge/process/0.20mm%20Standard%20%40Flashforge%20AD4%200.4%20Nozzle.json)
 7. [Community report: firmware-update-related layer shifts (anecdotal)](https://www.reddit.com/r/FlashForge/comments/15v83ok/how_to_restore_your_adventurer_4_to_an_older/)
+
+8. [Artillery official PLA Basic (190–220°C nozzle range)](https://es.store.artillery3d.com/products/pla-basic-1)
+9. [Open Filament Database via SimplyPrint (Artillery Basic PLA bed range)](https://simplyprint.io/filaments/artillery/pla-basic)
