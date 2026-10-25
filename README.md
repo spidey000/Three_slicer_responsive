@@ -1,70 +1,92 @@
-# Copy this prompt into your AI coding agent to install ThreeSlicer for a FlashForge Adventurer 4
+# Install ThreeSlicer remotely — copy this prompt into your AI agent
 
-> **Copy everything in the block below and paste it into an AI coding agent with terminal access on the Linux computer that will run the application.** The agent should install the web slicer and the local printer bridge, connect to your Adventurer 4, and tell you exactly how to open the UI.
+> **Copy the entire prompt below into an AI coding agent with terminal access to your always-on Linux host.** The goal is to control your FlashForge Adventurer 4 **securely from anywhere in the world**, via a private web UI protected by **Cloudflare Tunnel + Cloudflare Access**, without opening router ports. The agent should follow [the complete deployment guide](docs/REMOTE_ACCESS.md).
 
 ```text
-You are my installation and verification agent. Install and configure the open-source
-ThreeSlicer Responsive web application for a FlashForge Adventurer 4.
+Act as my installation, security and verification agent. Deploy ThreeSlicer
+Responsive as an always-on, private HTTPS web application so I can slice models
+and manage my FlashForge Adventurer 4 from my phone or computer worldwide.
 
-Source repositories:
-- Web application: https://github.com/spidey000/Three_slicer_responsive
-- Printer CLI: https://github.com/spidey000/FFAD4Manager
+Repositories:
+- https://github.com/spidey000/Three_slicer_responsive
+- https://github.com/spidey000/FFAD4Manager
 
-Operating environment: a Linux computer on the same trusted LAN as the printer.
-Use Python 3.9+ (with venv and pip), Node.js 20+, and npm. Check tools and versions
-first. Explain any missing prerequisite; do not silently install system software,
-modify firewall rules, or enable public network access without my permission.
+Architecture: remote browser -> Cloudflare Access -> Cloudflare Tunnel ->
+127.0.0.1:8765 ThreeSlicer backend (validates Cloudflare Access JWT) ->
+FFAD4Manager CLI -> Adventurer 4 on the local printer network.
 
-1. Clone both repositories into a directory I choose, or use existing clones
-   after checking the remote and any uncommitted changes. Do not overwrite my work.
-2. Install FFAD4Manager in an isolated Python environment:
-   python3 -m venv .venv
-   . .venv/bin/activate
-   python -m pip install --upgrade pip
-   python -m pip install -e ./FFAD4Manager
-   Adjust working directories accordingly; confirm ffadv4manager is available.
-3. Ask me for the printer's LAN address if you cannot determine it safely.
-   You may run 'ffadv4manager discover --json' as a read-only discovery step.
-   If I confirm the correct IP, run:
-   ffadv4manager config set --host PRINTER_IP
-   ffadv4manager status --json
-   Do not send any motion, heating, fan, upload, or print commands during setup.
-4. Enter the Three_slicer_responsive repository and use the committed lockfile:
-   npm ci
-   npm run build
-   Keep the FFAD4Manager virtual environment activated. Run the web bridge:
-   npm run local
-   Its default URL is http://127.0.0.1:8765/Three_slicer_responsive/
-   The server listens on loopback only. Never bind it to 0.0.0.0 or expose
-   printer-control APIs to the public Internet.
-5. Verify the production build exists and the local page and read-only
-   GET /api/printer/status route respond. Try the camera snapshot endpoint
-   only if I ask. Verify browser WebGL compatibility. Summarize any failures.
-6. Explain the workflow: open/import a model, choose process/material settings,
-   Slice or enable Auto slice, review the generated G-code preview, then optionally
-   choose Upload only or Print. Both upload and print control real hardware:
-   NEVER click them or trigger their API routes without my explicit approval.
-7. Explain precisely what is not available: GitHub Pages is a slicer demo, not
-   a remote printer-control service; the web UI does not expose every CLI command.
-   The CLI's upload-only path avoids M23/M24, but uploaded-file integrity and
-   firmware-side no-start behavior have not been fully verified. Treat a print
-   request or file-list ACK as an acknowledgement, not proof of physical success.
-8. Give me the local URL, the process or service running the bridge, how to
-   restart/stop it, the CLI configuration location, and the results of
-   npm run build, printer status, and any smoke tests. Keep my credentials and
-   personal network information out of public logs.
+First read README.md, docs/REMOTE_ACCESS.md, docs/AD4_LOCAL.md,
+and the FFAD4Manager CLI docs. Work on a Linux computer that stays online
+and shares a trusted LAN with the Adventurer 4. Require Node.js 20+,
+npm, Python 3.9+, a Python venv, pip and cloudflared.
 
-Do not declare hardware printing verified without an actual supervised printer test.
-Consult README.md and docs/AD4_LOCAL.md for the exact integration contract.
+IMPORTANT: Cloudflare configuration MUST precede publishing the Tunnel route.
+Never make a public, unauthenticated printer-control endpoint. Never expose
+ports 8765, 8899 or 8080 through router port forwarding or 0.0.0.0.
+Ask permission before changing OS packages, services, firewall or Cloudflare.
+
+1. Inspect the host, check whether repositories or a cloudflared Tunnel already
+   exist, and preserve all existing files, services and unrelated tunnel routes.
+   Ask me for the intended public hostname, approved login email, Cloudflare
+   team domain, Access application AUD tag, and the printer LAN IP (or let me
+   confirm a read-only ffadv4manager discover --json result). Use placeholders
+   until the required settings are known; do not invent domains or passwords.
+2. Clone or safely update both repositories. Use an isolated Python virtualenv.
+   Install FFAD4Manager from its source repository with pip install -e and
+   install PyJWT[crypto] for origin JWT signature validation. Run the read-only
+   ffadv4manager status --json command; never start a print while testing.
+3. Enter Three_slicer_responsive, run npm ci and npm run build, and verify that
+   dist/index.html exists. Do not deploy an unbuilt or GitHub-Pages-only version.
+4. In Cloudflare Zero Trust, create/reuse a Self-hosted Access application for
+   the exact public hostname (protect ALL paths), restrict Allow to my
+   authorized identity, ideally with MFA, and allow no Bypass rules. Obtain
+   its AUD tag. Set up/reuse a persistent Cloudflare Tunnel with a published
+   HTTP route mapping that hostname to http://127.0.0.1:8765 ON THIS HOST.
+   Do not override the forwarded Host header to localhost. If available,
+   enable Tunnel's Protect with Access as an additional validation layer.
+   Never touch unrelated DNS, routes, Access applications or tunnel tokens.
+5. Configure the bridge's four SERVER-SIDE settings, all required:
+   CF_ACCESS_TEAM_DOMAIN, CF_ACCESS_AUD, CF_ACCESS_PUBLIC_ORIGIN (the exact
+   https://hostname, without path or slash), and CF_ACCESS_EMAIL.
+   Do not bundle them in browser JS or commit them into Git.
+   The origin MUST verify Cf-Access-Jwt-Assertion signature, issuer, audience,
+   expiration and allowed email. Public POST requests must have the matching
+   Origin header. Missing or invalid tokens must fail closed.
+6. Run the bridge with the Python venv and an unprivileged Linux service
+   account that can use its configured FFAD4Manager. Configure systemd
+   restart-on-failure and boot startup, and configure cloudflared to stay
+   running. Keep the backend bound ONLY to 127.0.0.1. Secure env/token files.
+7. Verify, WITHOUT sending machine-changing commands:
+   - The app build and Python tests pass.
+   - The CLI can query the actual printer on the LAN.
+   - Unauthenticated requests to the public URL are blocked by Access.
+   - Direct origin requests without valid JWT are denied (HTTP 401).
+   - From an EXTERNAL NETWORK (for example, mobile data), the HTTPS hostname
+     requires Access login; my authorized session can load the real web UI.
+   - Read-only printer status and optionally a camera still work remotely.
+   - All /api/printer/* paths are behind the same Access policy.
+   If you cannot test an external network, report that explicitly.
+8. Hand back the final private HTTPS URL, service status, restart/log commands,
+   rollback instructions, which features are actually wired to FFAD4Manager,
+   and any unverified steps. Do not claim worldwide access works just because
+   a local build or Cloudflare configuration command succeeded.
+
+For safety, do NOT upload G-code, start/pause/resume/cancel jobs, switch fans,
+rename printers or issue other state-changing printer actions without my
+explicit permission. Read-only checks are appropriate. Uploaded filename
+confirmation does not prove file integrity or physical printer behavior.
+Do not include credentials, tunnel tokens, service-token secrets, printer LAN
+addresses or account identifiers in public commits/logs. Follow the official
+Cloudflare guides and docs/REMOTE_ACCESS.md for exact configuration.
 ```
 
 ---
 
 # ThreeSlicer Responsive — Adventurer 4 Web Slicer
 
-A responsive browser-based slicer and toolpath preview built on [Three Slicer](https://github.com/kimgh06/Three_Slicer), with an optional **local, loopback-only** bridge to [FFAD4Manager](https://github.com/spidey000/FFAD4Manager) for a **FlashForge Adventurer 4 (0.4 mm nozzle)**.
+A responsive browser-based slicer and Adventurer 4 management UI powered by [Three Slicer](https://github.com/kimgh06/Three_Slicer) and [FFAD4Manager](https://github.com/spidey000/FFAD4Manager). Its **recommended installation is a private, worldwide-accessible HTTPS service**: Cloudflare Access authenticates the user, Cloudflare Tunnel connects to an always-on home Linux host, and the loopback bridge validates Cloudflare Access JWTs before accessing the printer.
 
-**[Try the online slicer](https://spidey000.github.io/Three_slicer_responsive/)** · **[Local setup](docs/AD4_LOCAL.md)** · **[FFAD4Manager CLI reference](https://github.com/spidey000/FFAD4Manager/blob/main/docs/CLI.md)**
+**[Secure worldwide deployment (recommended)](docs/REMOTE_ACCESS.md)** · **[Try the public slicer-only demo](https://spidey000.github.io/Three_slicer_responsive/)** · **[Local-only setup](docs/AD4_LOCAL.md)** · **[CLI reference](https://github.com/spidey000/FFAD4Manager/blob/main/docs/CLI.md)**
 
 **Conservative printing defaults:** The standard 0.4 mm Adventurer 4 now opens with a low-speed, quality-oriented 0.20 mm profile. All bundled AD4 processes share the conservative speed and acceleration settings; saved custom processes can intentionally override them. See [the speed, acceleration and evidence reference](docs/AD4_CONSERVATIVE_PROFILE.md).
 
@@ -83,14 +105,30 @@ A responsive browser-based slicer and toolpath preview built on [Three Slicer](h
 | Automatic re-slicing | Yes | Optional Auto slice; changing the model or settings invalidates previous generated G-code. |
 | Toolpath preview and simulated nozzle traversal | Yes | Layer and move scrubbing, play, fast-forward, pause and reset; simulated movement is **not** an accurate real-time print prediction. |
 | Project/model export | Yes | Native viewer export actions, including 3MF/STL where supported by the upstream package. |
-| Live printer status label | Local bridge only | Reads `ffadv4manager status --json` approximately every 8 seconds; no bridge on GitHub Pages. |
-| Camera still image | Local bridge only | Uses `ffadv4manager camera snapshot`. If unavailable, the UI clearly shows a demo placeholder, not a live feed. |
-| Upload sliced G-code to printer | Local bridge only | Invokes `ffadv4manager upload` and automatic G-code-to-GX wrapping. Requires a reachable printer. |
-| Upload and request print start | Local bridge only | Invokes `ffadv4manager upload ... --start`. Device state must be supervised. |
+| Live printer status label | Authenticated self-hosted bridge | Reads `ffadv4manager status --json` approximately every 8 seconds; no bridge on GitHub Pages. |
+| Camera still image | Authenticated self-hosted bridge | Uses `ffadv4manager camera snapshot`. If unavailable, the UI clearly shows a demo placeholder, not a live feed. |
+| Upload sliced G-code to printer | Authenticated self-hosted bridge | Invokes `ffadv4manager upload` and automatic G-code-to-GX wrapping. Requires a reachable printer. |
+| Upload and request print start | Authenticated self-hosted bridge | Invokes `ffadv4manager upload ... --start`. Device state must be supervised. |
 
 This is functional slicer integration, not a static mockup. The UI delegates geometry manipulation, slicing and G-code preview to `three-slicer-viewer@0.4.0` and `three-slicer@0.4.0` instead of recreating the underlying engine.
 
-## Installation
+## Secure worldwide installation (recommended)
+
+The normal production URL is your **own protected Cloudflare hostname**, for example `https://slicer.example.com/Three_slicer_responsive/`. That is **not** the GitHub Pages URL, which intentionally has no printer backend. Cloudflare Access requires an authorized login before the UI and all `/api/printer/*` routes; the local bridge verifies the Access JWT again at the origin.
+
+**Required order:**
+
+1. Set up an always-on Linux machine on the printer's local network. Install the slicer, FFAD4Manager and `PyJWT[crypto]`; build with `npm ci && npm run build`.
+2. **Before publishing the hostname**, create a Cloudflare Access self-hosted application for the **entire hostname**, with an explicit Allow policy for your identity and no Bypass paths.
+3. Create or reuse an outbound Cloudflare Tunnel route from that hostname to `http://127.0.0.1:8765` on the same machine; **preserve the public Host header**, and do not open router ports.
+4. Configure the bridge's `CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUD`, `CF_ACCESS_PUBLIC_ORIGIN` and `CF_ACCESS_EMAIL` environment variables. The bridge rejects unsigned or invalid JWTs, wrong Host/Origin and incomplete configuration.
+5. Start the bridge and `cloudflared` as persistent systemd services. Verify unauthorized requests are denied, then sign in to your private HTTPS URL **from outside your home network** and check printer status without changing printer state.
+
+The complete, reproducible procedure, Cloudflare dashboard steps, environment-file template, example systemd unit and verification checklist are in **[docs/REMOTE_ACCESS.md](docs/REMOTE_ACCESS.md)**. Never publish the unauthenticated local-only mode using a Tunnel.
+
+### Local-only installation (development and troubleshooting)
+
+The following commands are for a trusted local host; this mode **does not provide worldwide access**.
 
 ### Requirements
 
@@ -114,7 +152,7 @@ npm run build
 npm run local
 ```
 
-Open **http://127.0.0.1:8765/Three_slicer_responsive/** on the same computer. Stop the server with Ctrl+C. You can use `AD4_HOST`, `AD4_CLI` and `AD4_WEB_PORT` to customize the local bridge; see [local installation details](docs/AD4_LOCAL.md).
+Open **http://127.0.0.1:8765/Three_slicer_responsive/** on the host running the bridge (local mode only). To make this installation accessible worldwide, complete **all** Cloudflare Access, Tunnel and origin validation steps in [the remote access guide](docs/REMOTE_ACCESS.md). You can use `AD4_HOST`, `AD4_CLI` and `AD4_WEB_PORT` locally as documented in [the local setup](docs/AD4_LOCAL.md).
 
 For browser-only development:
 
@@ -129,7 +167,7 @@ The Vite dev server proxies `/api` to the local bridge on port `8765`; printer f
 
 ## What FFAD4Manager can do — and what this web UI exposes
 
-**Key:** **UI** = available in the ThreeSlicer web UI through its local bridge; **CLI only** = implemented by FFAD4Manager but **not wired into this web UI**; **not available** = not provided as described. These statuses describe the current software interface, **not** a blanket guarantee of physical printer behavior.
+**Key:** **UI** = available in the ThreeSlicer web UI through its protected self-hosted bridge; **CLI only** = implemented by FFAD4Manager but **not wired into this web UI**; **not available** = not provided as described. These statuses describe the current software interface, **not** a blanket guarantee of physical printer behavior.
 
 | CLI function / command | CLI support | ThreeSlicer web UI | Details |
 | --- | --- | --- | --- |
@@ -169,7 +207,7 @@ The CLI has broader capabilities than this web UI. For details, flags and precis
 
 **Printer Manager:** tap the top-right AD4 status pill. The management screen reflects real CLI results only; GitHub Pages has no printer API. [Functionality and safety notes](docs/PRINTER_MANAGER.md).
 
-## Local printer workflow
+## Printer workflow (local or authenticated remote session)
 
 1. On the local server, confirm `ffadv4manager status --json` works and the printer is ready. Check the nozzle, bed, material, filament and printer-side conditions yourself.
 2. Import a 3D file and adjust process/filament parameters. Select **Slice** or enable **Auto slice**.
@@ -181,8 +219,8 @@ The CLI has broader capabilities than this web UI. For details, flags and precis
 ## Architecture, limits and safety
 
 - **Static demo:** GitHub Pages hosts only the browser slicer. The `/api/printer/*` routes do **not** exist on Pages; a static site cannot reach your local printer through those paths.
-- **Local bridge:** `server/ad4_bridge.py` serves `dist/` and exposes the allowlisted endpoints used by Printer Manager (state, discovery, files, job commands, diagnostics, snapshots, timelapse, Linux notifications, CLI connection profiles and uploads). It runs `ffadv4manager` via subprocess without a shell and listens only on `127.0.0.1:8765` by default. [Endpoint and safety details](docs/PRINTER_MANAGER.md).
-- **Access control:** This bridge is for local trusted use. It has no user login/authentication; do not expose it directly to the LAN, Internet or a public reverse proxy. A phone on another device cannot open the loopback address of your computer. Secure remote access requires a separately designed authenticated setup.
+- **Self-hosted protected origin:** `server/ad4_bridge.py` serves `dist/` and the allowlisted Printer Manager endpoints (status, files, discovery, camera, jobs, diagnostics, timelapse, printer profiles and controls). The server always listens on `127.0.0.1:8765`; Cloudflare Tunnel forwards permitted HTTPS sessions from the Access-protected hostname. Requests must pass origin JWT and Host/Origin checks in protected mode. [Endpoint details](docs/PRINTER_MANAGER.md).
+- **Access control:** Without `CF_ACCESS_*` variables, the bridge accepts only local loopback requests and must **not** be published through Cloudflare Tunnel. With all four required variables configured, it accepts the configured public hostname **only with a valid Cloudflare Access JWT** (verified signature, issuer, audience, expiry and authorized email); public POST requests additionally require the exact HTTPS Origin. Cloudflare Access policy and origin validation are both mandatory. See [secure remote installation](docs/REMOTE_ACCESS.md).
 - **Browser requirements:** The viewer needs WebGL. GitHub Pages cannot set isolation headers needed for `SharedArrayBuffer`; the slicer may fall back to a single-threaded worker.
 - **Slicing profile:** This app pins the bundled `Flashforge Adventurer 4 Series 0.4 Nozzle` preset for slicing. The new discovered-printer list and CLI connection profiles select a command target; they do not change slicer machine presets.
 - **Hardware testing:** We can validate builds and the deployed browser UI automatically; we cannot claim the physical print protocol is verified across printer firmware versions.
