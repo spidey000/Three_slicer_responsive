@@ -155,6 +155,7 @@ The Vite dev server proxies `/api` to the local bridge on port `8765`; printer f
 | Connection config — `config` | Implemented | **CLI only** | Host and camera settings managed on the host. |
 | Named printer profiles — `profiles` / `--profile` | Implemented | **CLI only** | The web slicer uses one fixed Adventurer 4 profile. |
 | CLI help — `help` | Implemented | **CLI only** | Full CLI documentation is external to the web UI. |
+| Separate FFAD4Manager slicer launcher — `slicer` | Implemented in FFAD4Manager | **Not used by this web app** | The CLI ships its own separately bundled local slicer UI; this repository uses `npm run local` and its own bridge. |
 | OrcaSlicer post-processing upload hook | Implemented separately | **Not integrated** | Available in FFAD4Manager for OrcaSlicer, not called by this web app. |
 | Continuous authenticated camera streaming in this UI | Not provided by this integration | **Not available** | Only on-demand JPEG snapshots are implemented here. |
 | End-to-end uploaded-file integrity verification | Not implemented | **Not available** | M661 confirms listed filename, not the file's stored content/size. |
