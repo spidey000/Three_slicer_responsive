@@ -1,15 +1,24 @@
-# Exploración y simulación del recorrido
+# Toolpath exploration and playback
 
-Tras laminar un modelo FFF (o abrir G-code compatible), el visor de Three Slicer cambia a **Preview**. Su vista de trayectoria representa los segmentos extruidos, los desplazamientos y un marcador de boquilla. La barra nueva, situada bajo el visualizador, controla esa misma vista:
+After slicing a filament model, the upstream Three Slicer viewer can render toolpaths, travels, layers and a simulated nozzle position. The bottom panel interacts with the **same actual upstream preview**, not a second or illustrative animation.
 
-- **Capas** muestra de la primera a la seleccionada; **Solo capa** aísla la seleccionada.
-- **Movimiento** recorre los movimientos de la capa visible en el orden que registra el visor, tanto extrusiones como desplazamientos. La boquilla señala la posición correspondiente.
-- **▶** reproduce a 80 movimientos por segundo simulado; **⏩** a ocho veces esa velocidad; **Ⅱ** pausa; **■** detiene y vuelve al primer movimiento de la primera capa. La barra de capas permite saltar a cualquier capa.
+## Controls
 
-Es una animación de la trayectoria calculada, **no una predicción temporal exacta** de la impresión: se avanza por número de movimientos, sin modelar aceleraciones, esperas, temperatura ni comandos auxiliares. No comunica con la impresora. La vista por movimientos solo corresponde a FFF; las impresiones de resina exponen capas, pero no movimiento secuencial de boquilla.
+| UI control | Behavior |
+| --- | --- |
+| **Layers** | Select the last visible layer (the previous layers remain visible by default). |
+| **Single layer** | Isolate the selected layer. |
+| **Movement** | Move through toolpath moves within the selected layer and update the nozzle marker. |
+| **Play** | Animate the planned toolpath at a simulated 80 moves/s. |
+| **Fast-forward ×8** | Simulated fast playback at eight times the base move rate. |
+| **Pause** | Stop the animation at the current position. |
+| **Stop** | Reset the timeline to the beginning. |
+| **Expand/collapse** | Show advanced controls or conserve workspace space on mobile. |
 
-## Integración técnica
+This is a **move-count visualization**, **not** a print-time predictor or control command. It does not model real printer acceleration, heaters, wait commands or external firmware behavior, and it does not contact the printer. FFF has nozzle moves; resin output is layer-based.
 
-`Viewport` 0.4.0 emite `canvasMode`, `layerCount`, `layerRange` y `moveScrub`, pero no acepta un valor controlado de capa o movimiento. `src/previewBridge.js` encapsula el acceso a los controles nativos de Preview en el Shadow DOM abierto del visor (identificados por `data-testid`), y despacha sus cambios para que el estado, el recorte de segmentos y el marcador de boquilla continúen gobernados por Three Slicer. En móvil, el panel lateral nativo permanece montado pero oculto visualmente; los controles nuevos actúan sobre él. Si se actualiza `three-slicer-viewer`, comprobar esos identificadores y sustituir este adaptador por una API pública si el paquete la añade.
+## Implementation
 
-La reproducción usa `requestAnimationFrame`; pausa al cambiar de placa, salir de Preview, laminar de nuevo o mover manualmente los deslizadores. Se limita la tasa de actualización de las etiquetas para no volver a renderizar todo el visor en cada fotograma. El espacio inferior queda reservado dentro de la columna 3D para que las tarjetas, los botones de placa y la barra no se solapen en tablet o móvil.
+`three-slicer-viewer@0.4.0` emits events for layer/move changes but does not offer controlled inputs for all movements through its public React props. The local `src/previewBridge.js` adapter accesses the upstream Preview range elements in the open Shadow DOM, writes values using the native input setter and dispatches input/change events. This retains ownership of the actual toolpath geometry and nozzle marker in the original viewer.
+
+Playback uses `requestAnimationFrame`; it pauses on manual scrubbing, plate changes, re-slicing or leaving Preview. The UI limits text-label update frequency and reserves enough bottom space to avoid overlapping controls. If the upstream viewer package is updated, verify the selectors (`layer-hi`, `layer-lo`, `move-range`, `single-layer-btn`, `move-reset`) and replace the adapter with a public API if the library introduces one.
