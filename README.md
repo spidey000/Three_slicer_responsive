@@ -1,27 +1,48 @@
 # Three Slicer Responsive
 
-Prototipo navegable de la interfaz de Three Slicer adaptada a móvil y tablet, junto con la especificación técnica para implementar el rediseño en la aplicación.
+Demo web responsive que utiliza las funciones reales de Three Slicer mediante sus paquetes publicados: `three-slicer` (motor WebAssembly) y `three-slicer-viewer` (visor y controles React).
 
-## Probar la interfaz
+## Demo alojada
 
-Abre [index.html](./index.html) en un navegador moderno o publica el repositorio con GitHub Pages. La vista cambia según el ancho de pantalla:
+GitHub Actions compila la aplicación y la publica en GitHub Pages al actualizar `main`:
 
-- **Móvil (<768 px):** visor 3D conceptual a pantalla completa, navegación inferior y panel de ajustes plegable con pestañas Rápido, Avanzado y Modelo.
-- **Tablet (768–1100 px):** barra de herramientas, visor central y panel lateral de ajustes.
-- **Escritorio (>1100 px):** composición completa con herramientas, visor y panel de inspección.
+**https://spidey000.github.io/Three_slicer_responsive/**
 
-El panel móvil se puede abrir desde **Ajustes** o deslizando la bandeja hacia arriba. Los botones **Laminar** y **Exportar** muestran un mensaje de demostración.
+La primera compilación puede tardar unos minutos. Si la URL aún no está disponible, revisa la pestaña **Actions** del repositorio.
 
-## Alcance
+## Funciones conectadas
 
-Este repositorio contiene un prototipo visual y de interacción. No integra el motor de laminado, la carga real de modelos, ni la exportación de G-code. El modelo geométrico de la demo es ilustrativo.
+- Carga de modelos por los controles nativos del visor o arrastrando archivos: STL, OBJ, 3MF, AMF, PLY y STEP.
+- Motor real de laminado WebAssembly, perfiles de impresora, proceso y material, ajustes con el esquema y reglas de Three Slicer.
+- Transformación de modelos, edición de objetos, varias placas, soportes y pintura de soporte/material.
+- Vista previa de trayectorias, navegación por capas, estadísticas de impresión y exportación desde los controles originales.
+- Apertura y vista previa de G-code y proyectos de resina compatibles, con las opciones que soporta el paquete.
+- En móvil, el panel lateral se convierte en un cajón de ajustes. El resto de acciones continúa usando los componentes nativos del visor.
 
-La propuesta conserva las tareas centrales del slicer y reorganiza los controles para el tamaño de pantalla: ajustes frecuentes al alcance del pulgar en móvil y un inspector persistente en tablet.
+La demo mantiene un único estado de configuración compartido entre perfiles, `SettingsPanel` y `Viewport`. El botón móvil **Laminar** envía una solicitud al visor real; el archivo G-code se exporta desde los controles nativos.
 
-## Especificación técnica
+## Desarrollo local
 
-Consulta [docs/Three_Slicer_especificacion_tecnica_responsive.md](./docs/Three_Slicer_especificacion_tecnica_responsive.md) para la arquitectura de componentes, breakpoints, interacción táctil, accesibilidad, fases de implementación y criterios de aceptación.
+Requiere Node.js 20 o posterior.
 
-## Uso
+```bash
+npm install
+npm run dev
+```
 
-No hay dependencias ni proceso de compilación. Sirve index.html desde cualquier servidor estático. Para activar GitHub Pages, selecciona la rama main y la carpeta raíz en la configuración **Settings → Pages**.
+Para verificar la compilación de producción:
+
+```bash
+npm run build
+npm run preview
+```
+
+El script `prebuild` añade las reglas responsive al CSS aislado de la versión fijada de `three-slicer-viewer`. Esto permite adaptar el shell interno de su Shadow DOM sin duplicar el visor ni sustituir sus acciones.
+
+## Límites del alojamiento
+
+GitHub Pages sirve la app como sitio estático. La carga, el laminado y la vista previa se ejecutan en el navegador; los modelos no se envían a un servidor. Hace falta WebGL. GitHub Pages no permite configurar las cabeceras COOP/COEP que necesita `SharedArrayBuffer`, por lo que el motor debe funcionar con el worker de un hilo cuando el navegador lo requiera.
+
+## Origen y licencias
+
+La integración consume los paquetes del proyecto [`kimgh06/Three_Slicer`](https://github.com/kimgh06/Three_Slicer). El motor `three-slicer` se distribuye bajo AGPL-3.0-or-later y el visor `three-slicer-viewer` bajo MIT; este proyecto se publica bajo AGPL-3.0-or-later. Consulta [LICENSE](./LICENSE) y los avisos de terceros del proyecto original.
