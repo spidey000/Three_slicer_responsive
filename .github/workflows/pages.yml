@@ -26,6 +26,8 @@ jobs:
           node-version: 20
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
+      - name: Validate conservative Adventurer 4 speed profile
+        run: node --test tests/ad4SafeProfile.test.mjs
       - name: Build demo
         run: npm run build
       - name: Upload Pages artifact
