@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import Viewport, { useSlicer } from 'three-slicer-viewer'
 import SettingsPanel from 'three-slicer-viewer/components'
 import { makeSlicerWorker } from 'three-slicer/client'
@@ -21,19 +22,27 @@ const ad4Catalog = { ...bundledCatalog,
 }
 const responsiveViewerCss = `
 .app-body { padding-bottom: var(--demo-preview-bottom, 0px); }
-.stats-card { left: 60px; }
+.stats-card { left: 60px; bottom: calc(var(--demo-preview-bottom, 0px) + 32px); }
+.stats-card .stats-toggle { display:block; width:100%; padding:2px 4px; border:0; background:transparent; color:var(--_accent-on-dark); font:600 12px/1.5 system-ui; text-align:left; cursor:pointer; }
+.stats-card.is-collapsed > :not(.stats-toggle) { display:none !important; }
+.stats-card.is-collapsed { padding:5px 9px; }
+.ad4-topbar { display:flex; align-items:center; gap:8px; margin-left:auto; white-space:nowrap; font:11px/1.2 system-ui,sans-serif; }
+.ad4-topbar .camera-trigger { position:static; display:grid; place-items:center; width:30px; height:30px; padding:5px; border:1px solid var(--_dark-border); border-radius:6px; background:var(--_dark-control); color:var(--_accent-on-dark); cursor:pointer; }
+.ad4-topbar .camera-trigger svg { width:18px; height:18px; }
 @media (max-width: 767px) {
   .app-shell { font-size: 12px; }
-  .topbar { flex: 0 0 86px; height: 86px; display: grid; grid-template-columns: minmax(0,1fr) auto;
-    grid-template-rows: 38px 38px; gap: 4px 8px; padding: 3px 8px; }
-  .topbar:has(.tb-gcode) { flex-basis: 122px; height: 122px; grid-template-rows: 38px 38px 34px; }
+  .topbar { flex: 0 0 118px; height: 118px; display: grid; grid-template-columns: minmax(0,1fr) auto;
+    grid-template-rows: 36px 34px 34px; gap: 3px 8px; padding: 3px 8px; }
+  .topbar:has(.tb-gcode) { flex-basis: 154px; height: 154px; grid-template-rows: 36px 34px 34px 34px; }
   .topbar .tb-left { grid-column: 1 / -1; grid-row: 1; min-width: 0; width: 100%; flex: none;
     overflow-x: auto; scrollbar-width: none; gap: 5px; }
   .topbar .tb-left::-webkit-scrollbar { display: none; }
   .topbar .tb-left > * { flex: 0 0 auto; }
   .topbar .tb-tabs { grid-column: 1; grid-row: 2; justify-self: start; }
   .topbar .tb-right { grid-column: 2; grid-row: 2; min-width: 0; flex: none; gap: 5px; }
-  .topbar .tb-gcode { grid-column: 1 / -1; grid-row: 3; min-width: 0; overflow: hidden; }
+  .topbar .tb-gcode { grid-column: 1 / -1; grid-row: 4; min-width: 0; overflow: hidden; }
+  .topbar .ad4-topbar { grid-column: 1 / -1; grid-row: 3; justify-self:end; min-width:0; }
+  .ad4-topbar .ad4-printer-state { overflow:hidden; text-overflow:ellipsis; }
   .topbar .tb-gcode span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tb-logo { font-size: 12px; white-space: nowrap; }
   .tb-btn { padding: 5px 7px; font-size: 11px; white-space: nowrap; }
@@ -45,7 +54,7 @@ const responsiveViewerCss = `
   .vp-top-toolbar button { width: 30px; height: 30px; }
   .plate-bar { right: 8px; bottom: 96px; max-width: calc(100% - 16px); overflow-x: auto; }
   .brush-panel { top: 50px; left: 6px; width: min(214px, calc(100% - 12px)); }
-  .stats-card, .bed-warn { left: 8px; bottom: 96px; max-width: min(48%, 190px); font-size: 11px; }
+  .stats-card, .bed-warn { left: 8px; bottom: max(96px, calc(var(--demo-preview-bottom, 0px) + 8px)); max-width: min(48%, 190px); font-size: 11px; }
 }
 @media (min-width: 768px) and (max-width: 1100px) {
   .sidebar { flex-basis: min(300px, 35vw); width: min(300px, 35vw); }
@@ -93,6 +102,8 @@ export default function Demo() {
   const [testCapturedAt, setTestCapturedAt] = useState(() => new Date())
   const cameraButton = useRef(null)
   const cameraClose = useRef(null)
+  const statsCollapsed = useRef(false)
+  const [toolbarTarget, setToolbarTarget] = useState(null)
   const viewerHost = useRef(null)
   const animation = useRef(null)
   const manualSelection = useRef(false)
@@ -263,16 +274,47 @@ export default function Demo() {
   // The upstream viewer deliberately isolates its UI in Shadow DOM. Keep using that component, but add the
   // responsive layout rules into its open root so its real tools remain intact at phone/tablet widths.
   useEffect(() => {
+    const observed = new WeakSet()
+    const observer = new MutationObserver(install)
     const install = () => {
       for (const host of document.querySelectorAll('#root *')) {
         const root = host.shadowRoot
-        if (!root || !root.querySelector('.app-shell') || root.querySelector('[data-responsive-demo]')) continue
+        if (!root || !root.querySelector('.app-shell')) continue
+        if (!observed.has(root)) { observer.observe(root, { childList: true, subtree: true }); observed.add(root) }
         const logo = root.querySelector('.tb-logo')
         if (logo) logo.href = import.meta.env.BASE_URL
-        const style = document.createElement('style')
-        style.dataset.responsiveDemo = ''
-        style.textContent = responsiveViewerCss
-        root.append(style)
+        if (!root.querySelector('[data-responsive-demo]')) {
+          const style = document.createElement('style')
+          style.dataset.responsiveDemo = ''
+          style.textContent = responsiveViewerCss
+          root.append(style)
+        }
+        const topbar = root.querySelector('.topbar')
+        if (topbar) {
+          let target = topbar.querySelector('[data-ad4-topbar]')
+          if (!target) { target = document.createElement('div'); target.className = 'ad4-topbar'; target.dataset.ad4Topbar = ''; topbar.insertBefore(target, topbar.querySelector('.tb-right')) }
+          setToolbarTarget(current => current === target ? current : target)
+        }
+        const card = root.querySelector('.stats-card')
+        if (card) {
+          card.classList.toggle('is-collapsed', statsCollapsed.current)
+          if (!card.querySelector('.stats-toggle')) {
+            const toggle = document.createElement('button')
+            toggle.type = 'button'
+            toggle.className = 'stats-toggle'
+            toggle.addEventListener('click', () => {
+              statsCollapsed.current = !statsCollapsed.current
+              card.classList.toggle('is-collapsed', statsCollapsed.current)
+              toggle.setAttribute('aria-expanded', String(!statsCollapsed.current))
+              toggle.textContent = statsCollapsed.current ? '▸ Datos de laminado' : '▾ Datos de laminado'
+            })
+            card.prepend(toggle)
+          }
+          const toggle = card.querySelector('.stats-toggle')
+          toggle.setAttribute('aria-expanded', String(!statsCollapsed.current))
+          const label = statsCollapsed.current ? '▸ Datos de laminado' : '▾ Datos de laminado'
+          if (toggle.textContent !== label) toggle.textContent = label
+        }
       }
       for (const host of document.querySelectorAll('.settings-surface *')) {
         const root = host.shadowRoot
@@ -284,9 +326,8 @@ export default function Demo() {
       }
     }
     install()
-    const observer = new MutationObserver(install)
     observer.observe(document.getElementById('root'), { childList: true, subtree: true })
-    return () => observer.disconnect()
+    return () => { observer.disconnect(); setToolbarTarget(null) }
   }, [])
 
   useEffect(() => {
@@ -393,8 +434,18 @@ export default function Demo() {
       />
     </div>
 
+    {toolbarTarget && createPortal(<>
+      <span className="ad4-printer-state">Adventurer 4 · {printerState}</span>
+      <button ref={cameraButton} className="camera-trigger" type="button" title="Ver captura de la cámara de la impresora"
+        aria-label="Ver cámara de la impresora" onClick={() => setCameraOpen(true)}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M4 7h3l1.5-2h7L17 7h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z"/>
+          <circle cx="12" cy="13" r="3.5"/>
+        </svg>
+      </button>
+    </>, toolbarTarget)}
+
     <div className="ad4-controls">
-      <span>Adventurer 4 · {printerState}</span>
       <label><input type="checkbox" checked={autoSlice} onChange={event => setAutoSlice(event.target.checked)} /> Auto slice</label>
       {sliced ? <div className="ad4-print"><button disabled={sending} onClick={() => sendPrint(true)}>{sending ? 'Enviando…' : 'Imprimir'}</button>
         <button disabled={sending} onClick={() => sendPrint(false)} title="Enviar sin iniciar impresión">▾ Solo enviar</button></div>
@@ -421,14 +472,6 @@ export default function Demo() {
       </div>
     </section>}
 
-    <button ref={cameraButton} className="camera-trigger" type="button" title="Ver captura de la cámara de la impresora"
-      aria-label="Ver cámara de la impresora" onClick={() => setCameraOpen(true)}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M4 7h3l1.5-2h7L17 7h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z"/>
-        <circle cx="12" cy="13" r="3.5"/>
-      </svg>
-    </button>
-
     {cameraOpen && <div className="camera-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setCameraOpen(false) }}>
       <section className="camera-modal" role="dialog" aria-modal="true" aria-labelledby="camera-title">
         <header className="camera-head"><div><span className="camera-eyebrow">VISTA DE CÁMARA · DEMO</span><h2 id="camera-title">Cámara de la impresora</h2></div>
@@ -444,7 +487,9 @@ export default function Demo() {
       <nav className="mobile-nav" aria-label="Acciones rápidas">
         <button className="nav-setting" onClick={() => setDrawer(true)}><span aria-hidden="true">☷</span>Ajustes</button>
         <span className="nav-status" aria-live="polite">{progressText}</span>
-        <button className="nav-slice" disabled={!sliced && !objects} onClick={() => sliced ? sendPrint(true) : setSliceRequest(value => value + 1)}><span aria-hidden="true">▶</span>{sliced ? 'Imprimir' : 'Laminar'}</button>
+        <label className="nav-auto"><input type="checkbox" checked={autoSlice} onChange={event => setAutoSlice(event.target.checked)} />Auto slice</label>
+        <button className="nav-slice" disabled={sending || (!sliced && !objects)} onClick={() => sliced ? sendPrint(true) : setSliceRequest(value => value + 1)}>{sending ? 'Enviando…' : sliced ? 'Imprimir' : 'Laminar'}</button>
+        {sliced && <button className="nav-send" disabled={sending} onClick={() => sendPrint(false)}>Solo enviar</button>}
       </nav>
       {drawer && <div className="drawer-scrim" onClick={() => setDrawer(false)} />}
       <section className={`settings-drawer${drawer ? ' is-open' : ''}`} role="dialog" aria-modal="true" aria-label="Ajustes del laminado">
