@@ -27,7 +27,7 @@ test('all bundled AD4 process profiles inherit the same conservative motion sett
     { layer_height: 0.30, outer_wall_speed: [50], default_acceleration: [8000] },
   ].map(applyAd4SafeProcess)
   for (const key of Object.keys(AD4_SAFE_PROCESS_OVERRIDES)) {
-    assert.ok(presets.every(item => num(item[key]) === num(AD4_SAFE_PROCESS_OVERRIDES[key])), key)
+    assert.ok(presets.every(item => JSON.stringify(item[key]) === JSON.stringify(AD4_SAFE_PROCESS_OVERRIDES[key])), key)
   }
   assert.deepEqual(presets.map(p => p.layer_height), [0.13, 0.20, 0.30])
 })
