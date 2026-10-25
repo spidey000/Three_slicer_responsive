@@ -11,6 +11,11 @@ import { schema, uiTree } from 'three-slicer/data'
 import { makeCfg, disabledKeys } from 'three-slicer/toggle'
 import './step_loader.js'
 import { AD4_STOCK_PROCESS, AD4_SAFE_PROCESS, applyAd4SafeMachineLimits, applyAd4SafeProcess } from './ad4SafeProfile.js'
+import {
+  SAVE_PROCESS_OPTION, SAVE_FILAMENT_OPTION, ARTILLERY_PLA_BASIC,
+  readProfileLibrary, writeProfileLibrary, addCustomProfile, replaceCustomProfile, removeCustomProfile,
+  makeArtilleryPlaBasic,
+} from './profileLibrary.js'
 import { fullPreviewLayer, getPreviewControls, previewMoveCount, scrubPreviewMove, selectPreviewLayer } from './previewBridge.js'
 
 // Keep this hook adapter at module scope: three-slicer-viewer calls it as a hook.
@@ -365,6 +370,12 @@ export default function Demo() {
   const [playbackExpanded, setPlaybackExpanded] = useState(() => !window.matchMedia('(max-width: 767px)').matches)
   const [sliceRequest, setSliceRequest] = useState(0)
   const [catalog, setCatalog] = useState(null)
+  const [profileLibrary, setProfileLibrary] = useState(() => readProfileLibrary(window.localStorage))
+  const [saveDialog, setSaveDialog] = useState(null)
+  const [profileName, setProfileName] = useState('')
+  const [profileError, setProfileError] = useState('')
+  const [profileNotice, setProfileNotice] = useState('')
+  const profileNameRef = useRef(null)
   const [status, setStatus] = useState('Open or drag a model to get started')
   const [progress, setProgress] = useState(null)
   const machine = AD4
@@ -715,10 +726,14 @@ export default function Demo() {
 
   useEffect(() => {
     if (!drawer) return
-    const close = (event) => { if (event.key === 'Escape') setDrawer(false) }
+    const close = (event) => { if (event.key === 'Escape') { if (saveDialog) setSaveDialog(null); else setDrawer(false) } }
     window.addEventListener('keydown', close)
     return () => window.removeEventListener('keydown', close)
-  }, [drawer])
+  }, [drawer, saveDialog])
+
+  useEffect(() => {
+    if (saveDialog) profileNameRef.current?.focus()
+  }, [saveDialog])
 
   useEffect(() => {
     if (!cameraOpen) return
@@ -728,22 +743,98 @@ export default function Demo() {
     return () => { window.removeEventListener('keydown', close); cameraButton.current?.focus() }
   }, [cameraOpen])
 
-  const processOptions = useMemo(() => catalog && machine ? [AD4_SAFE_PROCESS, ...catalog.process.listFor(machine)] : [], [catalog, machine])
+  // All bundled AD4 process profiles use identical conservative motion settings.
+  // Saved user profiles are snapshots, so intentionally edited values are never overridden.
+  const processOptions = useMemo(() => {
+    if (!catalog || !machine) return []
+    return [...new Set([AD4_SAFE_PROCESS, ...catalog.process.listFor(machine), ...profileLibrary.process.map(p => p.name)])]
+  }, [catalog, machine, profileLibrary.process])
   const filamentOptions = useMemo(() => {
     if (!catalog || !machine) return []
     const recommended = catalog.filament.recommendedFor(machine)
-    return recommended.length ? recommended : catalog.filament.listFor(machine)
-  }, [catalog, machine])
+    const original = recommended.length ? recommended : catalog.filament.listFor(machine)
+    return [
+      ...original,
+      { name: ARTILLERY_PLA_BASIC, type: 'PLA', vendor: 'Artillery' },
+      ...profileLibrary.filament.map(p => ({ name: p.name, type: 'Custom', vendor: 'You' })),
+    ].filter((item, index, array) => array.findIndex(p => p.name === item.name) === index)
+  }, [catalog, machine, profileLibrary.filament])
 
   const chooseProcess = (name) => {
+    if (name === SAVE_PROCESS_OPTION) { openSaveDialog('process'); return }
     if (!catalog || !name) return
-    const preset = name === AD4_SAFE_PROCESS
-      ? applyAd4SafeProcess(catalog.process.settingsFor(AD4_STOCK_PROCESS))
+    const custom = profileLibrary.process.find(p => p.name === name)
+    const original = name === AD4_SAFE_PROCESS
+      ? catalog.process.settingsFor(AD4_STOCK_PROCESS)
       : catalog.process.settingsFor(name)
+    const preset = custom?.values || (original && applyAd4SafeProcess(original))
     if (preset) setSettings(current => applyPreset(current, preset, catalog.process.keys, 'print_settings_id', name))
+    setProfileNotice('')
   }
   const chooseFilament = (name) => {
-    if (catalog && name) setSettings(current => applyPreset(current, catalog.filament.settingsFor(name), catalog.filament.keys, 'filament_settings_id', name))
+    if (name === SAVE_FILAMENT_OPTION) { openSaveDialog('filament'); return }
+    if (!catalog || !name) return
+    const custom = profileLibrary.filament.find(p => p.name === name)
+    const original = name === ARTILLERY_PLA_BASIC
+      ? makeArtilleryPlaBasic(catalog.filament.settingsFor('Generic PLA @Flashforge AD4'))
+      : catalog.filament.settingsFor(name)
+    const preset = custom?.values || original
+    if (preset) setSettings(current => applyPreset(current, preset, catalog.filament.keys, 'filament_settings_id', name))
+    setProfileNotice('')
+  }
+
+  function openSaveDialog(type) {
+    setProfileError('')
+    setProfileName(type === 'process' ? 'My AD4 process' : 'My filament')
+    setSaveDialog(type)
+  }
+
+  function persistLibrary(next) {
+    // Commit to storage before reporting success. A blocked/private storage write
+    // must never appear as a saved profile.
+    writeProfileLibrary(window.localStorage, next)
+    setProfileLibrary(next)
+  }
+
+  function saveCurrentProfile(event) {
+    event.preventDefault()
+    if (!catalog || !saveDialog) return
+    const type = saveDialog
+    const keys = type === 'process' ? catalog.process.keys : catalog.filament.keys
+    const names = type === 'process' ? processOptions : filamentOptions.map(item => item.name)
+    try {
+      const next = addCustomProfile(profileLibrary, type, profileName, settings, keys, names)
+      persistLibrary(next)
+      const savedName = next[type].at(-1).name
+      const idKey = type === 'process' ? 'print_settings_id' : 'filament_settings_id'
+      setSettings(current => ({ ...current, [idKey]: savedName }))
+      setSaveDialog(null)
+      setProfileError('')
+      setProfileNotice(`Saved ${type} profile "${savedName}" in this browser.`)
+    } catch (error) {
+      setProfileError(error.message || 'Could not save the profile.')
+    }
+  }
+
+  function updateSavedProfile(type) {
+    const name = type === 'process' ? settings.print_settings_id : settings.filament_settings_id
+    if (!catalog || !profileLibrary[type].some(p => p.name === name)) return
+    const keys = type === 'process' ? catalog.process.keys : catalog.filament.keys
+    try {
+      persistLibrary(replaceCustomProfile(profileLibrary, type, name, settings, keys))
+      setProfileNotice(`Updated "${name}" in this browser.`)
+    } catch (error) { setProfileNotice(error.message || 'Could not update profile.') }
+  }
+
+  function deleteSavedProfile(type) {
+    const name = type === 'process' ? settings.print_settings_id : settings.filament_settings_id
+    if (!profileLibrary[type].some(p => p.name === name) || !window.confirm(`Delete saved ${type} profile "${name}"?`)) return
+    try {
+      persistLibrary(removeCustomProfile(profileLibrary, type, name))
+      if (type === 'process') chooseProcess(AD4_SAFE_PROCESS)
+      else chooseFilament(ARTILLERY_PLA_BASIC)
+      setProfileNotice(`Deleted "${name}" from this browser.`)
+    } catch (error) { setProfileNotice(error.message || 'Could not delete profile.') }
   }
 
   // Keep the native preview controls mounted in the hidden mobile sidebar: the
