@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" role="img" aria-label="Imagen de prueba de webcam de impresora 3D">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" role="img" aria-label="Demo 3D printer camera image">
   <defs>
     <linearGradient id="bg" x2="0" y2="1"><stop stop-color="#273039"/><stop offset="1" stop-color="#15191e"/></linearGradient>
     <linearGradient id="print" x2="1" y2="1"><stop stop-color="#b9ee66"/><stop offset="1" stop-color="#62952c"/></linearGradient>
@@ -15,7 +15,7 @@
   <path d="M400 386l30-90h100l30 90Z" fill="url(#print)" stroke="#d7f7a5" stroke-width="4"/>
   <path d="M430 296l18 90M530 296l-18 90M411 356h138" stroke="#477423" stroke-width="3" opacity=".65"/>
   <circle cx="106" cy="110" r="8" fill="#a7e43d"/>
-  <text x="126" y="116" fill="#dce8d3" font-family="sans-serif" font-size="18">VISTA SIMULADA</text>
+  <text x="126" y="116" fill="#dce8d3" font-family="sans-serif" font-size="18">SIMULATED VIEW</text>
   <g transform="rotate(-17 480 270)"><rect x="145" y="210" width="670" height="114" rx="10" fill="#12161b" fill-opacity=".79" stroke="#e5f7cb" stroke-opacity=".6" stroke-width="2"/>
-    <text x="480" y="283" text-anchor="middle" fill="#d8f79a" font-family="sans-serif" font-size="58" font-weight="800" letter-spacing="7">IMAGEN DE PRUEBA</text></g>
+    <text x="480" y="283" text-anchor="middle" fill="#d8f79a" font-family="sans-serif" font-size="58" font-weight="800" letter-spacing="7">DEMO IMAGE</text></g>
 </svg>

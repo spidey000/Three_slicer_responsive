@@ -9,15 +9,15 @@ class InterfaceBoundary extends React.Component {
   static getDerivedStateFromError(error) { return { error } }
 
   componentDidCatch(error, info) {
-    console.error('Error al renderizar Three Slicer', error, info.componentStack)
+    console.error('Error while rendering Three Slicer', error, info.componentStack)
   }
 
   render() {
     if (this.state.error) return <main className="startup-error" role="alert">
-      <h1>No se pudo mostrar la interfaz</h1>
-      <p>Recarga la página. Si el problema continúa, copia el error de la consola del navegador para poder investigarlo.</p>
+      <h1>Unable to display the application</h1>
+      <p>Reload the page. If the problem persists, copy the error from your browser's developer console for troubleshooting.</p>
       <code>{this.state.error.message}</code>
-      <button type="button" onClick={() => window.location.reload()}>Recargar</button>
+      <button type="button" onClick={() => window.location.reload()}>Reload</button>
     </main>
     return this.props.children
   }

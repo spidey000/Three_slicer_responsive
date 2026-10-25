@@ -75,16 +75,16 @@ class Handler(SimpleHTTPRequestHandler):
         origin = self.headers.get('Origin')
         expected = f'http://{self.headers.get("Host", "")}'
         if origin and origin != expected:
-            return self.json(403, {'error': 'Origen no autorizado'})
+            return self.json(403, {'error': 'Unauthorized origin'})
         try:
             size = int(self.headers.get('Content-Length', '0'))
             if not 0 < size <= MAX_GCODE:
-                return self.json(413, {'error': 'El G-code está vacío o supera 100 MB'})
+                return self.json(413, {'error': 'G-code is empty or exceeds 100 MB'})
             if not self.headers.get('Content-Type', '').startswith('text/plain'):
-                return self.json(415, {'error': 'Se requiere G-code text/plain'})
+                return self.json(415, {'error': 'G-code must be sent as text/plain'})
             data = self.rfile.read(size)
             if len(data) != size or not data.strip():
-                return self.json(400, {'error': 'G-code incompleto'})
+                return self.json(400, {'error': 'Incomplete G-code'})
             start = parse_qs(path.query).get('start', ['false'])[0] == 'true'
             with tempfile.TemporaryDirectory() as directory:
                 filename = Path(directory) / 'three-slicer-ad4.gcode'
@@ -97,7 +97,7 @@ class Handler(SimpleHTTPRequestHandler):
 
 if __name__ == '__main__':
     if not (DIST / 'index.html').is_file():
-        sys.exit('Falta dist/: ejecuta npm run build primero')
+        sys.exit('Missing dist/: run npm run build first')
     port = int(os.environ.get('AD4_WEB_PORT', '8765'))
     print(f'AD4 web: http://127.0.0.1:{port}{BASE}', flush=True)
     ThreadingHTTPServer(('127.0.0.1', port), Handler).serve_forever()

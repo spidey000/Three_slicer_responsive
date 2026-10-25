@@ -1,31 +1,27 @@
-# Webcam de la impresora: contrato de integración
+# Adventurer 4 camera integration
 
-El botón con la cámara abre ahora un modal funcional. La imagen actual es un SVG ilustrativo con la marca de agua **IMAGEN DE PRUEBA**. «Actualizar prueba» solo actualiza la hora simulada; no hace una petición a una impresora.
+**Current implementation:** the mobile/desktop camera button opens an actual modal. On a local server, `GET /api/printer/camera` calls `ffadv4manager camera snapshot TEMP.jpg` and returns one JPEG image. The modal can request a fresh still using **Refresh snapshot**.
 
-Cuando exista una conexión real, se debe conservar el botón y el modal y sustituir el origen de la imagen por un `Blob` JPEG o PNG devuelto por el servidor. Evita incluir credenciales de la impresora en el frontend público. El backend puede actuar como proxy autenticado hacia la cámara y verificar el tipo de contenido.
+This is not a continuous video player and does not stream the printer's MJPEG feed. If the request fails (including on GitHub Pages, which has no backend), the interface shows a clearly labeled simulated image. It must not be mistaken for the printer's real state.
 
-```js
-// PSEUDOCÓDIGO: contrato ficticio, sin endpoint real conectado.
-async function obtenerCapturaImpresora({ printerId, signal }) {
-  const respuesta = await fetch(`/api/printers/${encodeURIComponent(printerId)}/camera/snapshot`, {
-    method: 'GET',
-    headers: { Accept: 'image/jpeg, image/png' },
-    credentials: 'include', // la sesión se valida en el servidor
-    cache: 'no-store',
-    signal,
-  })
-  if (!respuesta.ok) throw new Error(`La cámara respondió ${respuesta.status}`)
-  const tipo = respuesta.headers.get('content-type')?.split(';')[0].trim().toLowerCase()
-  if (!['image/jpeg', 'image/png'].includes(tipo)) throw new Error('Formato no compatible')
-  const archivo = await respuesta.blob()
-  if (archivo.size > 10_000_000) throw new Error('Captura demasiado grande')
-  return { url: URL.createObjectURL(archivo), mime: tipo, capturedAt: new Date() }
-}
+## Local flow
 
-// Al abrir o actualizar el modal: abortar la petición anterior, indicar cargando,
-// obtener la captura, revocar la URL anterior con URL.revokeObjectURL(url) y renderizar
-// la nueva URL. En un error, mostrarlo en el modal sin sustituirlo por una imagen vieja.
-// Al cerrar/desmontar: abortar la petición y revocar la URL actual.
+1. The browser invokes the same-origin local API without directly embedding printer IP addresses.
+2. `server/ad4_bridge.py` runs the installed CLI with a temporary filename and a bounded subprocess timeout.
+3. FFAD4Manager requests the first complete frame from the printer's MJPEG endpoint (default HTTP `http://PRINTER_IP:8080/?action=stream`) and writes a JPEG file.
+4. The local bridge returns JPEG bytes. The browser creates an object URL, displays it, and revokes old object URLs during refresh/cleanup.
+
+The request does not open the printer TCP command connection. Troubleshoot with:
+
+```bash
+ffadv4manager camera url
+ffadv4manager camera snapshot /tmp/ad4-camera.jpg
 ```
 
-El servidor ficticio `GET /api/printers/:printerId/camera/snapshot` debería obtener una captura puntual de la cámara configurada para esa impresora, autenticar al usuario, restringir el origen de la impresora autorizado y devolver bytes `image/jpeg` o `image/png`. No hace falta exposición directa de la webcam ni streaming para esta función.
+## Not included
+
+- Continuous MJPEG playback in the ThreeSlicer UI.
+- Layer-synchronized timelapse controls. The CLI offers a separate `camera timelapse` command, but the UI does not expose it.
+- Authentication or encryption on the printer's camera stream. The local bridge is loopback-only; never publish the unauthenticated stream or bridge to the Internet.
+
+More details: [Local setup](AD4_LOCAL.md) and [CLI integration matrix](../README.md#what-ffad4manager-can-do--and-what-this-web-ui-exposes).

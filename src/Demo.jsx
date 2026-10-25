@@ -364,14 +364,14 @@ export default function Demo() {
   const [playbackExpanded, setPlaybackExpanded] = useState(() => !window.matchMedia('(max-width: 767px)').matches)
   const [sliceRequest, setSliceRequest] = useState(0)
   const [catalog, setCatalog] = useState(null)
-  const [status, setStatus] = useState('Abre o arrastra un modelo para empezar')
+  const [status, setStatus] = useState('Open or drag a model to get started')
   const [progress, setProgress] = useState(null)
   const machine = AD4
   const [autoSlice, setAutoSlice] = useState(false)
   const [objects, setObjects] = useState(0)
   const [sliced, setSliced] = useState(null)
   const [sending, setSending] = useState(false)
-  const [printerState, setPrinterState] = useState('Sin conexión')
+  const [printerState, setPrinterState] = useState('Disconnected')
   const [cameraSrc, setCameraSrc] = useState(null)
   const [cameraOpen, setCameraOpen] = useState(false)
   const [testCapturedAt, setTestCapturedAt] = useState(() => new Date())
@@ -404,7 +404,7 @@ export default function Demo() {
   }, [autoSlice, objects, settings, plateSettings, sliced])
   useEffect(() => {
     const refresh = () => fetch('/api/printer/status').then(r => r.json()).then(data =>
-      setPrinterState(data.machine_status ?? data.status ?? 'Conectada')).catch(() => setPrinterState('Sin conexión'))
+      setPrinterState(data.machine_status ?? data.status ?? 'Connected')).catch(() => setPrinterState('Disconnected'))
     refresh()
     const timer = setInterval(refresh, 8000)
     return () => clearInterval(timer)
@@ -426,9 +426,9 @@ export default function Demo() {
         method: 'POST', headers: { 'Content-Type': 'text/plain; charset=utf-8' }, body: sliced.gcode,
       })
       const result = await response.json()
-      if (!response.ok) throw Error(result.error || 'No se pudo enviar el trabajo')
-      setStatus(start ? `Imprimiendo · ${result.remote_name}` : `Enviado · ${result.remote_name}`)
-    } catch (error) { setStatus(`Error de impresión: ${error.message}`) }
+      if (!response.ok) throw Error(result.error || 'Unable to send the job')
+      setStatus(start ? `Print requested · ${result.remote_name}` : `Uploaded · ${result.remote_name}`)
+    } catch (error) { setStatus(`Printer error: ${error.message}`) }
     finally { setSending(false) }
   }
 
@@ -582,25 +582,25 @@ export default function Demo() {
         setToolbarTarget(current => current === target ? current : target)
       }
       const translations = {
-        'mode-prepare': 'Preparar', 'mode-preview': 'Vista previa',
+        'mode-prepare': 'Prepare', 'mode-preview': 'Preview',
       }
       Object.entries(translations).forEach(([id, label]) =>
         setText(root.querySelector('[data-testid="' + id + '"]'), label))
       const open = root.querySelector('[data-testid="open-file"] span')
-      if (open) setText(open, 'Abrir')
+      if (open) setText(open, 'Open')
       const project = root.querySelector('[data-testid="save-project"] span')
-      if (project && project.textContent === 'Save as 3mf') setText(project, 'Guardar 3MF')
+      if (project && project.textContent === 'Save as 3mf') setText(project, 'Save 3MF')
 
       const emptyHint = root.querySelector('.empty-hint')
       if (emptyHint) {
-        setText(emptyHint.querySelector('.eh-title'), 'Tu próximo proyecto empieza aquí')
-        setText(emptyHint.querySelector('.eh-btn'), 'Abrir modelo 3D')
+        setText(emptyHint.querySelector('.eh-title'), 'Your next project starts here')
+        setText(emptyHint.querySelector('.eh-btn'), 'Open 3D model')
         const picture = emptyHint.querySelector('.eh-icon')
         if (picture && picture.textContent !== '◈') setText(picture, '◈')
       }
       const drop = root.querySelector('.drop-overlay')
-      if (drop && !drop.textContent.startsWith('Suelta aquí')) {
-        setText(drop, 'Suelta aquí el archivo 3D')
+      if (drop && !drop.textContent.startsWith('Drop your')) {
+        setText(drop, 'Drop your 3D file here')
       }
       const card = root.querySelector('.stats-card')
       if (!card) return
@@ -609,7 +609,7 @@ export default function Demo() {
         toggle = document.createElement('button')
         toggle.type = 'button'
         toggle.className = 'stats-toggle'
-        toggle.setAttribute('aria-label', 'Mostrar u ocultar los datos completos de laminado')
+        toggle.setAttribute('aria-label', 'Show or hide all slicing statistics')
         const stack = document.createElement('span')
         stack.className = 'stats-title-stack'
         const heading = document.createElement('span')
@@ -625,7 +625,7 @@ export default function Demo() {
           statsCollapsed.current = !statsCollapsed.current
           card.classList.toggle('is-collapsed', statsCollapsed.current)
           toggle.setAttribute('aria-expanded', String(!statsCollapsed.current))
-          setText(heading, statsCollapsed.current ? '✓ Laminado listo' : 'Datos de laminado')
+          setText(heading, statsCollapsed.current ? '✓ Slicing complete' : 'Slice details')
           setText(chevron, statsCollapsed.current ? '⌄' : '⌃')
         })
         card.prepend(toggle)
@@ -642,14 +642,14 @@ export default function Demo() {
       const filament = raw.map(node => node.textContent).join(' ').match(/Filament\s+([\d.,]+)\s*mm/i)?.[1]
       const totalTime = card.querySelector('[data-testid="print-time"]')?.textContent.match(/(\d+h\s*\d+m)/i)?.[1]
       const pieces = []
-      if (layers) pieces.push(layers + ' capas')
+      if (layers) pieces.push(layers + ' layers')
       if (totalTime) pieces.push(totalTime.replace(/\s+/g, ' '))
       if (filament) {
         const metres = Number(filament.replace(',', '.')) / 1000
-        if (Number.isFinite(metres)) pieces.push(metres.toLocaleString('es-ES', { maximumFractionDigits: 2 }) + ' m')
+        if (Number.isFinite(metres)) pieces.push(metres.toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' m')
       }
-      setText(glance, pieces.join(' · ') || 'Toca para ver los datos')
-      setText(heading, statsCollapsed.current ? '✓ Laminado listo' : 'Datos de laminado')
+      setText(glance, pieces.join(' · ') || 'Tap to view details')
+      setText(heading, statsCollapsed.current ? '✓ Slicing complete' : 'Slice details')
       setText(chevron, statsCollapsed.current ? '⌄' : '⌃')
       toggle.setAttribute('aria-expanded', String(!statsCollapsed.current))
       card.classList.toggle('has-warning', !!card.querySelector('.slice-warn'))
@@ -662,9 +662,9 @@ export default function Demo() {
         root.append(style)
       }
       const search = root.querySelector('.sp-search')
-      if (search && search.placeholder !== 'Buscar ajustes por nombre o clave…') search.placeholder = 'Buscar ajustes por nombre o clave…'
-      setText(root.querySelector('.sp-builder > span'), 'Categoría')
-      const modes = { all: 'Todas', simple: 'Básico', advanced: 'Avanzado', expert: 'Experto', develop: 'Desarrollo' }
+      if (search && search.placeholder !== 'Search settings by name or key…') search.placeholder = 'Search settings by name or key…'
+      setText(root.querySelector('.sp-builder > span'), 'Category')
+      const modes = { all: 'All', simple: 'Basic', advanced: 'Advanced', expert: 'Expert', develop: 'Developer' }
       root.querySelectorAll('.sp-modes button').forEach(button => {
         const original = button.dataset.mode || button.textContent
         if (modes[original]) {
@@ -706,7 +706,7 @@ export default function Demo() {
     Promise.all([processPresets(), filamentPresets()]).then(([process, filament]) => {
       if (live) setCatalog({ process, filament })
     }).catch(() => {
-      if (live) setStatus('No se pudieron cargar los catálogos de perfiles')
+      if (live) setStatus('Unable to load the preset catalogs')
     })
     return () => { live = false }
   }, [])
@@ -748,7 +748,7 @@ export default function Demo() {
     <SettingsPanel embedded settings={panelSettings} setSettings={setPanelSettings}
       overriddenKeys={meta?.overriddenKeys} onRevertKey={meta?.onRevertKey} {...panelData} />
   )
-  const progressText = progress == null ? status : `Laminando… ${Math.round(progress * 100)}%`
+  const progressText = progress == null ? status : `Slicing… ${Math.round(progress * 100)}%`
 
   return <main className={`demo-shell${previewVisible ? ' has-preview' : ''}${playbackExpanded ? ' playback-open' : ''}`}>
     <div className="viewport-host" ref={viewerHost}>
@@ -798,7 +798,7 @@ export default function Demo() {
           pausePlayback()
           manualSelection.current = false
           setProgress(null)
-          setStatus(`Laminado listo · ${stats?.layers ?? '—'} capas`)
+          setStatus(`Slicing complete · ${stats?.layers ?? '—'} layers`)
           setSliced({ gcode })
           requestAnimationFrame(() => setPreview(current => ({ ...current, hasMoves: Boolean(getPreviewControls(viewerHost.current)?.move) })))
         }}
@@ -807,11 +807,11 @@ export default function Demo() {
 
     {toolbarTarget && createPortal(<>
       <span className="ad4-printer-state" title={`Adventurer 4 · ${printerState}`} aria-label={`Adventurer 4 · ${printerState}`}>
-        <strong>AD4</strong><span className={`state-dot${printerState === 'Sin conexión' ? '' : ' is-online'}`} />
+        <strong>AD4</strong><span className={`state-dot${printerState === 'Disconnected' ? '' : ' is-online'}`} />
         <span className="state-text">{printerState}</span>
       </span>
-      <button ref={cameraButton} className="camera-trigger" type="button" title="Ver captura de la cámara de la impresora"
-        aria-label="Ver cámara de la impresora" onClick={() => setCameraOpen(true)}>
+      <button ref={cameraButton} className="camera-trigger" type="button" title="View a printer camera snapshot"
+        aria-label="View printer camera" onClick={() => setCameraOpen(true)}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M4 7h3l1.5-2h7L17 7h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z"/>
           <circle cx="12" cy="13" r="3.5"/>
@@ -821,83 +821,83 @@ export default function Demo() {
 
     <div className="ad4-controls">
       <label><input type="checkbox" checked={autoSlice} onChange={event => setAutoSlice(event.target.checked)} /> Auto slice</label>
-      {sliced ? <div className="ad4-print" role="group" aria-label="Enviar trabajo a la Adventurer 4"><button disabled={sending} onClick={() => sendPrint(true)}>{sending ? 'Enviando…' : 'Imprimir'}</button>
-        <button disabled={sending} onClick={() => sendPrint(false)} title="Enviar sin iniciar impresión">Solo enviar</button></div>
-        : <button onClick={() => setSliceRequest(value => value + 1)} disabled={!objects}>Laminar</button>}
+      {sliced ? <div className="ad4-print" role="group" aria-label="Send job to the Adventurer 4"><button disabled={sending} onClick={() => sendPrint(true)}>{sending ? 'Sending…' : 'Print'}</button>
+        <button disabled={sending} onClick={() => sendPrint(false)} title="Upload without starting the print">Upload only</button></div>
+        : <button onClick={() => setSliceRequest(value => value + 1)} disabled={!objects}>Slice</button>}
     </div>
 
-    {previewVisible && <section className={`playback-dock${playbackExpanded ? '': ' is-compact'}`} aria-label="Simulación del recorrido de impresión">
+    {previewVisible && <section className={`playback-dock${playbackExpanded ? '': ' is-compact'}`} aria-label="Toolpath playback">
       <div className="playback-heading">
-        <div className="playback-title"><strong>Recorrido de la boquilla</strong></div>
+        <div className="playback-title"><strong>Nozzle path</strong></div>
         <div className="playback-heading-right">
-          <span>Capa {preview.layer + 1} / {preview.count}</span>
+          <span>Layer {preview.layer + 1} / {preview.count}</span>
           <button type="button" className="playback-expand" onClick={() => setPlaybackExpanded(value => !value)}
-            aria-label={playbackExpanded ? 'Contraer controles del recorrido' : 'Expandir controles del recorrido'}
-            aria-expanded={playbackExpanded} title={playbackExpanded ? 'Mostrar controles compactos' : 'Mostrar todos los controles'}>
+            aria-label={playbackExpanded ? 'Collapse toolpath controls' : 'Expand toolpath controls'}
+            aria-expanded={playbackExpanded} title={playbackExpanded ? 'Show compact controls' : 'Show all controls'}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="m6 9 6 6 6-6" />
             </svg>
           </button>
         </div>
       </div>
-      <div className="playback-layer"><label htmlFor="preview-layer">Capas</label>
+      <div className="playback-layer"><label htmlFor="preview-layer">Layers</label>
         <input id="preview-layer" type="range" min="1" max={preview.count} value={preview.layer + 1}
-          onChange={event => selectLayer(Number(event.target.value) - 1)} aria-label="Seleccionar capa" />
+          onChange={event => selectLayer(Number(event.target.value) - 1)} aria-label="Select layer" />
         <button type="button" className={preview.single ? 'is-selected' : ''} aria-pressed={preview.single}
-          onClick={() => selectLayer(preview.layer, !preview.single)} title="Mostrar solo esta capa">Solo capa</button>
+          onClick={() => selectLayer(preview.layer, !preview.single)} title="Show only this layer">Single layer</button>
       </div>
       <div className="playback-actions">
-        <button type="button" disabled={!preview.hasMoves} onClick={() => playPlayback(1)} aria-label="Reproducir recorrido" title="Reproducir" className="playback-primary">▶</button>
-        <button type="button" className="playback-extra" disabled={!preview.hasMoves} onClick={() => playPlayback(8)} aria-label="Avance rápido del recorrido" title="Avance rápido ×8">⏩</button>
-        <button type="button" className="playback-extra" disabled={!preview.hasMoves} onClick={pausePlayback} aria-label="Pausar recorrido" title="Pausar">Ⅱ</button>
-        <button type="button" className="playback-extra" disabled={!preview.hasMoves} onClick={stopPlayback} aria-label="Detener y volver al inicio" title="Detener y volver al inicio">■</button>
-        <label className="playback-extra" htmlFor="preview-move">Movimiento</label>
+        <button type="button" disabled={!preview.hasMoves} onClick={() => playPlayback(1)} aria-label="Play toolpath" title="Play" className="playback-primary">▶</button>
+        <button type="button" className="playback-extra" disabled={!preview.hasMoves} onClick={() => playPlayback(8)} aria-label="Fast-forward toolpath" title="Fast-forward ×8">⏩</button>
+        <button type="button" className="playback-extra" disabled={!preview.hasMoves} onClick={pausePlayback} aria-label="Pause toolpath" title="Pause">Ⅱ</button>
+        <button type="button" className="playback-extra" disabled={!preview.hasMoves} onClick={stopPlayback} aria-label="Stop and return to start" title="Stop and return to start">■</button>
+        <label className="playback-extra" htmlFor="preview-move">Movement</label>
         <input id="preview-move" type="range" disabled={!preview.hasMoves} min="0" max={Math.max(1, preview.max)} value={Math.min(preview.move, Math.max(1, preview.max))}
-          onChange={event => { pausePlayback(); scrubPreviewMove(viewerHost.current, Number(event.target.value)) }} aria-label="Explorar movimientos de la capa" />
-        <span className="playback-count">{preview.hasMoves ? `${preview.move} / ${preview.max}` : 'Sin boquilla FFF'}</span>
+          onChange={event => { pausePlayback(); scrubPreviewMove(viewerHost.current, Number(event.target.value)) }} aria-label="Scrub movements in this layer" />
+        <span className="playback-count">{preview.hasMoves ? `${preview.move} / ${preview.max}` : 'No FFF nozzle path'}</span>
       </div>
     </section>}
 
     {cameraOpen && <div className="camera-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setCameraOpen(false) }}>
       <section className="camera-modal" role="dialog" aria-modal="true" aria-labelledby="camera-title">
-        <header className="camera-head"><div><span className="camera-eyebrow">VISTA DE CÁMARA · DEMO</span><h2 id="camera-title">Cámara de la impresora</h2></div>
-          <button ref={cameraClose} type="button" className="camera-close" onClick={() => setCameraOpen(false)} aria-label="Cerrar cámara">×</button></header>
-        <figure className="camera-frame"><img src={cameraSrc || `${import.meta.env.BASE_URL}webcam-test.svg`} alt={cameraSrc ? 'Captura de la Adventurer 4' : 'Imagen de prueba de impresora 3D'} />
-          <figcaption>{cameraSrc ? 'Captura actual de la Adventurer 4' : 'Imagen de prueba · Sin conexión'}</figcaption></figure>
-        <footer className="camera-foot"><span>Captura simulada: {testCapturedAt.toLocaleString('es-ES')}</span>
-          <button type="button" onClick={captureCamera}>{cameraSrc ? 'Actualizar captura' : 'Reintentar cámara'}</button></footer>
+        <header className="camera-head"><div><span className="camera-eyebrow">PRINTER CAMERA</span><h2 id="camera-title">Printer camera</h2></div>
+          <button ref={cameraClose} type="button" className="camera-close" onClick={() => setCameraOpen(false)} aria-label="Close camera">×</button></header>
+        <figure className="camera-frame"><img src={cameraSrc || `${import.meta.env.BASE_URL}webcam-test.svg`} alt={cameraSrc ? 'Adventurer 4 snapshot' : 'Printer camera placeholder image'} />
+          <figcaption>{cameraSrc ? 'Latest Adventurer 4 snapshot' : 'Demo image · Camera unavailable'}</figcaption></figure>
+        <footer className="camera-foot"><span>Camera checked: {testCapturedAt.toLocaleString('en-US')}</span>
+          <button type="button" onClick={captureCamera}>{cameraSrc ? 'Refresh snapshot' : 'Retry camera'}</button></footer>
       </section>
     </div>}
 
     {mobile && <>
-      <nav className="mobile-nav" aria-label="Acciones rápidas">
-        <button className="nav-setting" type="button" title="Ajustes de laminado" aria-label="Abrir ajustes de laminado" onClick={() => setDrawer(true)}>
+      <nav className="mobile-nav" aria-label="Quick actions">
+        <button className="nav-setting" type="button" title="Slicing settings" aria-label="Open slicing settings" onClick={() => setDrawer(true)}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
             <path d="M4 7h16M4 12h16M4 17h16" /><circle cx="9" cy="7" r="2" fill="#26313c"/><circle cx="15" cy="12" r="2" fill="#26313c"/><circle cx="8" cy="17" r="2" fill="#26313c"/>
           </svg>
         </button>
         <span className="nav-status" aria-live="polite">{progressText}</span>
         <label className="nav-auto"><input type="checkbox" role="switch" checked={autoSlice} onChange={event => setAutoSlice(event.target.checked)} /><span>Auto slice</span></label>
-        {sliced ? <div className="nav-print-group" role="group" aria-label="Acciones de impresión">
-          <button className="nav-slice" disabled={sending} onClick={() => sendPrint(true)}>{sending ? 'Enviando…' : 'Imprimir'}</button>
-          <button className="nav-send" disabled={sending} onClick={() => sendPrint(false)}>Solo enviar</button>
-        </div> : <button className="nav-slice" disabled={!objects} onClick={() => setSliceRequest(value => value + 1)}>Laminar</button>}
+        {sliced ? <div className="nav-print-group" role="group" aria-label="Print actions">
+          <button className="nav-slice" disabled={sending} onClick={() => sendPrint(true)}>{sending ? 'Sending…' : 'Print'}</button>
+          <button className="nav-send" disabled={sending} onClick={() => sendPrint(false)}>Upload only</button>
+        </div> : <button className="nav-slice" disabled={!objects} onClick={() => setSliceRequest(value => value + 1)}>Slice</button>}
       </nav>
       {drawer && <div className="drawer-scrim" onClick={() => setDrawer(false)} />}
-      <section className={`settings-drawer${drawer ? ' is-open' : ''}`} role="dialog" aria-modal="true" aria-label="Ajustes del laminado">
+      <section className={`settings-drawer${drawer ? ' is-open' : ''}`} role="dialog" aria-modal="true" aria-label="Slicing settings">
         <div className="drawer-handle" />
-        <header className="drawer-header"><div><span className="drawer-kicker">Configuración de impresión</span><strong>Ajustes del laminado</strong><small>Perfiles, material y parámetros avanzados</small></div>
-          <button className="close-drawer" onClick={() => setDrawer(false)} aria-label="Cerrar ajustes">×</button></header>
+        <header className="drawer-header"><div><span className="drawer-kicker">Print configuration</span><strong>Slicing settings</strong><small>Presets, material and advanced parameters</small></div>
+          <button className="close-drawer" onClick={() => setDrawer(false)} aria-label="Close settings">×</button></header>
         <div className="profile-selects">
-          <label>Proceso<select disabled={!machine || !catalog} value={settings.print_settings_id ?? ''} onChange={event => chooseProcess(event.target.value)}>
-            <option value="">Perfil de proceso</option>{processOptions.map(name => <option key={name} value={name}>{name}</option>)}
+          <label>Process<select disabled={!machine || !catalog} value={settings.print_settings_id ?? ''} onChange={event => chooseProcess(event.target.value)}>
+            <option value="">Process preset</option>{processOptions.map(name => <option key={name} value={name}>{name}</option>)}
           </select></label>
           <label>Material<select disabled={!machine || !catalog} value={settings.filament_settings_id ?? ''} onChange={event => chooseFilament(event.target.value)}>
-            <option value="">Perfil de material</option>{filamentOptions.map(item => <option key={item.name} value={item.name}>{item.name}</option>)}
+            <option value="">Material preset</option>{filamentOptions.map(item => <option key={item.name} value={item.name}>{item.name}</option>)}
           </select></label>
         </div>
         <div className="settings-surface"><SettingsPanel embedded settings={settings} setSettings={setSettings} {...panelData} /></div>
-        <button className="drawer-slice" onClick={() => { setDrawer(false); sliced ? sendPrint(true) : setSliceRequest(value => value + 1) }}>{sliced ? 'Imprimir' : 'Laminar modelo'}</button>
+        <button className="drawer-slice" onClick={() => { setDrawer(false); sliced ? sendPrint(true) : setSliceRequest(value => value + 1) }}>{sliced ? 'Print' : 'Slice model'}</button>
       </section>
     </>}
   </main>
