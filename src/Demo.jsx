@@ -10,6 +10,7 @@ import {
 import { schema, uiTree } from 'three-slicer/data'
 import { makeCfg, disabledKeys } from 'three-slicer/toggle'
 import './step_loader.js'
+import { AD4_STOCK_PROCESS, AD4_SAFE_PROCESS, applyAd4SafeMachineLimits, applyAd4SafeProcess } from './ad4SafeProfile.js'
 import { fullPreviewLayer, getPreviewControls, previewMoveCount, scrubPreviewMove, selectPreviewLayer } from './previewBridge.js'
 
 // Keep this hook adapter at module scope: three-slicer-viewer calls it as a hook.
@@ -357,7 +358,7 @@ function applyPreset(base, preset, keys, idKey, name) {
 }
 
 export default function Demo() {
-  const [settings, setSettings] = useState(() => ({ ...printerSettings(AD4), printer_settings_id: AD4 }))
+  const [settings, setSettings] = useState(() => ({ ...applyAd4SafeMachineLimits(printerSettings(AD4)), printer_settings_id: AD4 }))
   const [plateSettings, setPlateSettings] = useState({})
   const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 767px)').matches)
   const [drawer, setDrawer] = useState(false)
@@ -388,10 +389,11 @@ export default function Demo() {
 
   useEffect(() => {
     if (!catalog) return
-    const preset = printerDefaultPreset(AD4)
+    const stockPresetName = printerDefaultPreset(AD4) || AD4_STOCK_PROCESS
+    const standardSettings = catalog.process.settingsFor(AD4_STOCK_PROCESS) || catalog.process.settingsFor(stockPresetName)
     const filament = catalog.filament.recommendedFor(AD4)[0] || catalog.filament.listFor(AD4)[0]
     setSettings(current => {
-      let next = preset ? applyPreset(current, catalog.process.settingsFor(preset), catalog.process.keys, 'print_settings_id', preset) : current
+      let next = standardSettings ? applyPreset(current, applyAd4SafeProcess(standardSettings), catalog.process.keys, 'print_settings_id', AD4_SAFE_PROCESS) : current
       if (filament) next = applyPreset(next, catalog.filament.settingsFor(filament.name), catalog.filament.keys, 'filament_settings_id', filament.name)
       return next
     })
@@ -726,7 +728,7 @@ export default function Demo() {
     return () => { window.removeEventListener('keydown', close); cameraButton.current?.focus() }
   }, [cameraOpen])
 
-  const processOptions = useMemo(() => catalog && machine ? catalog.process.listFor(machine) : [], [catalog, machine])
+  const processOptions = useMemo(() => catalog && machine ? [AD4_SAFE_PROCESS, ...catalog.process.listFor(machine)] : [], [catalog, machine])
   const filamentOptions = useMemo(() => {
     if (!catalog || !machine) return []
     const recommended = catalog.filament.recommendedFor(machine)
@@ -734,7 +736,11 @@ export default function Demo() {
   }, [catalog, machine])
 
   const chooseProcess = (name) => {
-    if (catalog && name) setSettings(current => applyPreset(current, catalog.process.settingsFor(name), catalog.process.keys, 'print_settings_id', name))
+    if (!catalog || !name) return
+    const preset = name === AD4_SAFE_PROCESS
+      ? applyAd4SafeProcess(catalog.process.settingsFor(AD4_STOCK_PROCESS))
+      : catalog.process.settingsFor(name)
+    if (preset) setSettings(current => applyPreset(current, preset, catalog.process.keys, 'print_settings_id', name))
   }
   const chooseFilament = (name) => {
     if (catalog && name) setSettings(current => applyPreset(current, catalog.filament.settingsFor(name), catalog.filament.keys, 'filament_settings_id', name))
