@@ -8,6 +8,8 @@ GitHub Actions compila la aplicación y la publica en GitHub Pages al actualizar
 
 **https://spidey000.github.io/Three_slicer_responsive/**
 
+[Vista de revisión móvil y tablet](https://spidey000.github.io/Three_slicer_responsive/preview.html) con dos marcos interactivos a anchuras reales.
+
 En la primera publicación, configura una vez **Settings → Pages → Build and deployment → Source: GitHub Actions**. Después, GitHub Actions compila y publica la aplicación al actualizar `main`. Si la URL aún no está disponible, revisa **Actions**.
 
 ## Funciones conectadas
