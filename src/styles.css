@@ -34,8 +34,9 @@ html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; }
 .ad4-controls input { accent-color: #a7e43d; vertical-align: middle; }
 .ad4-controls button { border: 0; border-radius: 6px; background: #a7e43d; color: #17200d; padding: 6px 9px; font-weight: 700; cursor: pointer; }
 .ad4-controls button:disabled { opacity: .45; cursor: default; }
-.ad4-print { display: flex; gap: 4px; }
-.ad4-print button + button { background: #303944; color: #eef2f4; border: 1px solid #4c5762; }
+.ad4-print { display: grid; grid-template-columns: 1fr 1fr; overflow:hidden; border:1px solid #53616d; border-radius:8px; }
+.ad4-print button { border-radius:0; }
+.ad4-print button + button { background:#303944; color:#eef2f4; border-left:1px solid #75818a; }
 .demo-shell.has-preview { --demo-preview-bottom: 112px; }
 .playback-dock { position: absolute; z-index: 13; inset: auto 0 0; height: 112px; padding: 12px 20px;
   display: flex; flex-direction: column; gap: 7px; background: #1c2128; border-top: 1px solid #47515c;
@@ -81,7 +82,7 @@ button:focus-visible, select:focus-visible { outline: 2px solid #a7e43d; outline
   .mobile-nav {
     position: absolute; z-index: 12; left: 0; right: 0; bottom: 0;
     min-height: 88px; padding: 8px max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
-    display: grid; grid-template-columns: 68px 82px minmax(66px,1fr) auto; grid-template-rows: 16px 44px;
+    display: grid; grid-template-columns: 68px 99px minmax(0,1fr); grid-template-rows: 16px 44px;
     gap: 6px; background: #171a20; border-top: 1px solid #303640;
     box-shadow: 0 -7px 24px #0004;
   }
@@ -89,10 +90,17 @@ button:focus-visible, select:focus-visible { outline: 2px solid #a7e43d; outline
   .mobile-nav button:disabled { opacity:.5; }
   .mobile-nav button span { font-size: 15px; line-height: 1; }
   .nav-setting { grid-column: 1; grid-row: 2; background: #292f38; color: #e3e8ee; }
-  .nav-auto { grid-column: 2; grid-row: 2; display:flex; align-items:center; justify-content:center; gap:3px; padding:0 3px; border:1px solid #3b4450; border-radius:9px; color:#d3dce2; font-size:10px; white-space:nowrap; }
-  .nav-auto input { width:15px; height:15px; margin:0; accent-color:#a7e43d; }
+  .nav-auto { grid-column: 2; grid-row: 2; display:flex; align-items:center; justify-content:center; gap:5px; padding:0 5px; border:1px solid #3b4450; border-radius:9px; color:#d3dce2; font-size:10px; white-space:nowrap; cursor:pointer; }
+  .nav-auto input { appearance:none; flex:0 0 30px; width:30px; height:18px; margin:0; border:1px solid #66737c; border-radius:99px; background:#343c47; position:relative; cursor:pointer; transition:background .18s ease; }
+  .nav-auto input::before { content:''; position:absolute; left:2px; top:2px; width:12px; height:12px; border-radius:50%; background:#d7dfe3; transition:transform .18s ease; }
+  .nav-auto input:checked { background:#a7e43d; border-color:#a7e43d; }
+  .nav-auto input:checked::before { background:#17200d; transform:translateX(12px); }
+  .nav-auto input:focus-visible { outline:2px solid #a7e43d; outline-offset:2px; }
   .nav-slice { grid-column: 3; grid-row: 2; background: #a7e43d; color: #15180f; }
-  .nav-send { grid-column: 4; grid-row: 2; padding:0 7px; background:#303944; color:#e7edf0; white-space:nowrap; }
+  .nav-print-group { grid-column:3; grid-row:2; display:grid; grid-template-columns:1fr 1fr; overflow:hidden; border:1px solid #617079; border-radius:9px; }
+  .nav-print-group button { border-radius:0; font-size:11px; }
+  .nav-print-group .nav-slice { grid-column:1; grid-row:1; }
+  .nav-send { grid-column:2; grid-row:1; padding:0 3px; background:#303944; color:#e7edf0; white-space:nowrap; border-left:1px solid #87939b !important; }
   .nav-status { grid-column: 1 / -1; grid-row: 1; min-width: 0; color: #aab3be; font-size: 11px; line-height: 16px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   .drawer-scrim { display: block; position: absolute; z-index: 19; inset: 0; background: #080a0dbb; backdrop-filter: blur(2px); }
   .settings-drawer {
@@ -117,8 +125,8 @@ button:focus-visible, select:focus-visible { outline: 2px solid #a7e43d; outline
   .drawer-slice { flex: 0 0 44px; margin-top: 10px; border: 0; border-radius: 9px; background: #a7e43d; color: #15180f; font-family: inherit; font-size: 13px; font-weight: 700; }
 }
 @media (max-width: 380px) {
-  .mobile-nav { grid-template-columns: 60px 75px minmax(58px,1fr) auto; gap: 4px; padding-inline: 6px; }
-  .nav-send { padding:0 5px; font-size:10px !important; }
+  .mobile-nav { grid-template-columns: 60px 92px minmax(0,1fr); gap: 4px; padding-inline: 6px; }
+  .nav-print-group button { font-size:10px; }
   .profile-selects { grid-template-columns: 1fr; gap: 6px; }
   .profile-selects select { height: 32px; }
   .settings-drawer { height: 90dvh; }
