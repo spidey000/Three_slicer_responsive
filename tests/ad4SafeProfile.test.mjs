@@ -47,3 +47,12 @@ test('process accelerations stay below conservative machine ceilings', () => {
   assert.equal(machine.machine_max_speed_x[0], 100)
   assert.deepEqual(result.nozzle_diameter, [0.4])
 })
+
+test('original end G-code parking speed is slowed without losing Flashforge commands', () => {
+  const original = 'G1 E-3 F3600\\nG0 X50 Y50 F9000\\nM652\\nG28 X Y'
+  const result = applyAd4SafeMachineLimits({ machine_end_gcode: original })
+  assert.ok(result.machine_end_gcode.includes('G1 E-3 F2400'))
+  assert.ok(result.machine_end_gcode.includes('G0 X50 Y50 F4800'))
+  assert.ok(result.machine_end_gcode.includes('M652'))
+  assert.equal(original.includes('F9000'), true)
+})
