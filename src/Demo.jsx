@@ -9,11 +9,13 @@ import {
 import { schema, uiTree } from 'three-slicer/data'
 import { makeCfg, disabledKeys } from 'three-slicer/toggle'
 import './step_loader.js'
+import { fullPreviewLayer, getPreviewControls, previewMoveCount, scrubPreviewMove, selectPreviewLayer } from './previewBridge.js'
 
 // Keep this hook adapter at module scope: three-slicer-viewer calls it as a hook.
 const slicer = (deps) => useSlicer({ ...deps, makeWorker: makeSlicerWorker })
 const panelData = { schema, uiTree, toggle: { makeCfg, disabledKeys } }
 const responsiveViewerCss = `
+.app-body { padding-bottom: var(--demo-preview-bottom, 0px); }
 @media (max-width: 767px) {
   .app-shell { font-size: 12px; }
   .topbar { flex: 0 0 86px; height: 86px; display: grid; grid-template-columns: minmax(0,1fr) auto;
@@ -79,6 +81,102 @@ export default function Demo() {
   const [testCapturedAt, setTestCapturedAt] = useState(() => new Date())
   const cameraButton = useRef(null)
   const cameraClose = useRef(null)
+  const viewerHost = useRef(null)
+  const animation = useRef(null)
+  const playback = useRef({ layer: 0, move: 0, last: 0, remainder: 0, speed: 1, count: 0, waiting: false })
+  const [preview, setPreview] = useState({ mode: 'prepare', count: 0, layer: 0, move: 0, max: 0, single: false, playing: false, speed: 1 })
+  const previewVisible = preview.mode === 'preview' && preview.count > 0
+
+  const pausePlayback = () => {
+    if (animation.current != null) cancelAnimationFrame(animation.current)
+    animation.current = null
+    playback.current.last = 0
+    playback.current.remainder = 0
+    setPreview(current => current.playing ? { ...current, playing: false } : current)
+  }
+
+  const selectLayer = (layer, single = preview.single) => {
+    pausePlayback()
+    const index = Math.min(Math.max(0, Number(layer) || 0), Math.max(0, preview.count - 1))
+    if (!selectPreviewLayer(viewerHost.current, index, single)) return
+    fullPreviewLayer(viewerHost.current)
+    playback.current.layer = index
+    playback.current.move = 0
+    setPreview(current => ({ ...current, layer: index, single, move: 0 }))
+    requestAnimationFrame(() => setPreview(current => ({ ...current, max: previewMoveCount(viewerHost.current) })))
+  }
+
+  const stopPlayback = () => {
+    pausePlayback()
+    if (selectPreviewLayer(viewerHost.current, 0, false)) {
+      // A new layer is rendered by React after this event; the next frame starts at move zero.
+      requestAnimationFrame(() => scrubPreviewMove(viewerHost.current, 0))
+    }
+    playback.current.layer = 0
+    playback.current.move = 0
+    setPreview(current => ({ ...current, layer: 0, move: 0, single: false }))
+    requestAnimationFrame(() => setPreview(current => ({ ...current, max: previewMoveCount(viewerHost.current) })))
+  }
+
+  const playPlayback = (speed = 1) => {
+    if (!previewVisible || !getPreviewControls(viewerHost.current)) return
+    if (animation.current != null) cancelAnimationFrame(animation.current)
+    const state = playback.current
+    state.count = preview.count
+    state.layer = preview.layer
+    state.move = preview.move
+    state.speed = speed
+    state.last = 0
+    state.lastUi = 0
+    state.remainder = 0
+    state.waiting = false
+    // Print from the first layer if a previous run ended at the last move.
+    if (state.layer >= state.count - 1 && state.move >= previewMoveCount(viewerHost.current)) {
+      state.layer = 0
+      state.move = 0
+    }
+    selectPreviewLayer(viewerHost.current, state.layer, false)
+    setPreview(current => ({ ...current, layer: state.layer, single: false, playing: true, speed }))
+
+    const tick = timestamp => {
+      const run = playback.current
+      if (run.waiting) {
+        run.waiting = false
+        scrubPreviewMove(viewerHost.current, 0)
+      }
+      const max = previewMoveCount(viewerHost.current)
+      if (!getPreviewControls(viewerHost.current)) { pausePlayback(); return }
+      const elapsed = run.last ? Math.min(100, timestamp - run.last) : 0
+      run.last = timestamp
+      run.remainder += elapsed * 0.08 * run.speed // 80 actual toolpath moves per simulated second.
+      const step = Math.floor(run.remainder)
+      run.remainder -= step
+      if (step > 0 && max > 0) {
+        run.move = Math.min(max, run.move + step)
+        scrubPreviewMove(viewerHost.current, run.move)
+      }
+      if (max === 0 || run.move >= max) {
+        if (run.layer >= run.count - 1) {
+          animation.current = null
+          setPreview(current => ({ ...current, layer: run.layer, move: max, max, playing: false }))
+          return
+        }
+        run.layer++
+        run.move = 0
+        run.remainder = 0
+        selectPreviewLayer(viewerHost.current, run.layer, false)
+        run.waiting = true
+      }
+      if (timestamp - run.lastUi > 120 || run.waiting) {
+        run.lastUi = timestamp
+        setPreview(current => ({ ...current, layer: run.layer, move: run.move, max }))
+      }
+      animation.current = requestAnimationFrame(tick)
+    }
+    animation.current = requestAnimationFrame(tick)
+  }
+
+  useEffect(() => () => { if (animation.current != null) cancelAnimationFrame(animation.current) }, [])
 
   useEffect(() => {
     const query = window.matchMedia('(max-width: 767px)')
@@ -168,15 +266,18 @@ export default function Demo() {
     if (catalog && name) setSettings(current => applyPreset(current, catalog.filament.settingsFor(name), catalog.filament.keys, 'filament_settings_id', name))
   }
 
-  const panels = mobile ? { sidebar: false } : undefined
+  // Keep the native preview controls mounted in the hidden mobile sidebar: the
+  // dock below drives those same inputs, so Three Slicer's GPU toolpath and nozzle stay authoritative.
+  const panels = mobile ? { printerCard: false, filamentCard: false, objectList: false,
+    processCard: false, sliceBar: false, towerCard: false, resinCard: false } : undefined
   const processPanel = (panelSettings, setPanelSettings, meta) => (
     <SettingsPanel embedded settings={panelSettings} setSettings={setPanelSettings}
       overriddenKeys={meta?.overriddenKeys} onRevertKey={meta?.onRevertKey} {...panelData} />
   )
   const progressText = progress == null ? status : `Laminando… ${Math.round(progress * 100)}%`
 
-  return <main className="demo-shell">
-    <div className="viewport-host">
+  return <main className={`demo-shell${previewVisible ? ' has-preview' : ''}`}>
+    <div className="viewport-host" ref={viewerHost}>
       <Viewport
         slicer={slicer}
         catalog={bundledCatalog}
@@ -201,6 +302,20 @@ export default function Demo() {
           if (event.type === 'slicing' && !event.value) setProgress(null)
           if (event.type === 'error') { setProgress(null); setStatus(`Error: ${event.value}`) }
           if (event.type === 'notice') setStatus(event.value)
+          if (event.type === 'canvasMode') {
+            if (event.value !== 'preview') pausePlayback()
+            setPreview(current => ({ ...current, mode: event.value }))
+          }
+          if (event.type === 'layerCount') {
+            pausePlayback()
+            setPreview(current => ({ ...current, count: event.value, layer: Math.min(current.layer, Math.max(0, event.value - 1)) }))
+          }
+          if (event.type === 'layerRange') {
+            setPreview(current => ({ ...current, layer: event.value.hi }))
+            requestAnimationFrame(() => setPreview(current => ({ ...current, max: previewMoveCount(viewerHost.current) })))
+          }
+          if (event.type === 'moveScrub' && animation.current == null) setPreview(current => ({ ...current, move: event.value.at, max: event.value.max }))
+          if (event.type === 'selectedPlate') { pausePlayback(); setPreview(current => ({ ...current, layer: 0, move: 0 })) }
         }}
         onSliced={({ stats }) => {
           setProgress(null)
@@ -208,6 +323,26 @@ export default function Demo() {
         }}
       />
     </div>
+
+    {previewVisible && <section className="playback-dock" aria-label="Simulación del recorrido de impresión">
+      <div className="playback-heading"><strong>Recorrido de la boquilla</strong><span>Capa {preview.layer + 1} / {preview.count}</span></div>
+      <div className="playback-layer"><label htmlFor="preview-layer">Capas</label>
+        <input id="preview-layer" type="range" min="1" max={preview.count} value={preview.layer + 1}
+          onChange={event => selectLayer(Number(event.target.value) - 1)} aria-label="Seleccionar capa" />
+        <button type="button" className={preview.single ? 'is-selected' : ''} aria-pressed={preview.single}
+          onClick={() => selectLayer(preview.layer, !preview.single)} title="Mostrar solo esta capa">Solo capa</button>
+      </div>
+      <div className="playback-actions">
+        <button type="button" onClick={() => playPlayback(1)} aria-label="Reproducir recorrido" title="Reproducir">▶</button>
+        <button type="button" onClick={() => playPlayback(8)} aria-label="Avance rápido del recorrido" title="Avance rápido ×8">⏩</button>
+        <button type="button" onClick={pausePlayback} aria-label="Pausar recorrido" title="Pausar">Ⅱ</button>
+        <button type="button" onClick={stopPlayback} aria-label="Detener y volver al inicio" title="Detener y volver al inicio">■</button>
+        <label htmlFor="preview-move">Movimiento</label>
+        <input id="preview-move" type="range" min="0" max={Math.max(1, preview.max)} value={Math.min(preview.move, Math.max(1, preview.max))}
+          onChange={event => { pausePlayback(); scrubPreviewMove(viewerHost.current, Number(event.target.value)) }} aria-label="Explorar movimientos de la capa" />
+        <span className="playback-count">{preview.move} / {preview.max}</span>
+      </div>
+    </section>}
 
     <button ref={cameraButton} className="camera-trigger" type="button" title="Ver captura de la cámara de la impresora"
       aria-label="Ver cámara de la impresora" onClick={() => setCameraOpen(true)}>

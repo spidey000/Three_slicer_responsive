@@ -22,6 +22,20 @@ html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; }
   --vp-dark-control: #242a32; --vp-dark-control-hover: #303843;
 }
 .viewport-host { position: absolute; inset: 0; overflow: hidden; }
+.demo-shell.has-preview { --demo-preview-bottom: 112px; }
+.playback-dock { position: absolute; z-index: 13; inset: auto 0 0; height: 112px; padding: 12px 20px;
+  display: flex; flex-direction: column; gap: 7px; background: #1c2128; border-top: 1px solid #47515c;
+  box-shadow: 0 -8px 28px #0007; font-size: 12px; }
+.playback-heading, .playback-layer, .playback-actions { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.playback-heading { justify-content: space-between; color: #e5ebef; }
+.playback-heading span, .playback-count { color: #b9c4cd; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.playback-layer input, .playback-actions input { flex: 1; min-width: 42px; accent-color: #a7e43d; }
+.playback-layer label, .playback-actions label { color: #aeb8c2; white-space: nowrap; }
+.playback-dock button { flex: 0 0 auto; min-width: 30px; min-height: 30px; padding: 3px 8px; border: 1px solid #46525d;
+  border-radius: 7px; background: #303944; color: #e8eef2; font: 700 12px/1.2 system-ui,sans-serif; cursor: pointer; }
+.playback-dock button:hover, .playback-dock button.is-selected { background: #a7e43d; border-color: #a7e43d; color: #16200c; }
+.playback-dock button:focus-visible, .playback-dock input:focus-visible { outline: 2px solid #a7e43d; outline-offset: 2px; }
+.demo-shell.has-preview .camera-trigger { bottom: 122px; }
 .mobile-nav, .settings-drawer, .drawer-scrim { display: none; }
 button:focus-visible, select:focus-visible { outline: 2px solid #a7e43d; outline-offset: 2px; }
 .camera-trigger { position: absolute; z-index: 14; left: 5px; bottom: 18px; width: 38px; height: 38px; padding: 8px;
@@ -44,6 +58,13 @@ button:focus-visible, select:focus-visible { outline: 2px solid #a7e43d; outline
 .camera-foot button { border: 1px solid #648736; border-radius: 8px; background: #a7e43d; color: #17200d; padding: 8px 12px; font: 700 12px/1.2 system-ui,sans-serif; cursor: pointer; }
 
 @media (max-width: 767px) {
+  .demo-shell.has-preview { --demo-preview-bottom: 211px; }
+  .playback-dock { bottom: 88px; height: 123px; padding: 8px 10px; gap: 6px; font-size: 11px; }
+  .playback-heading, .playback-layer, .playback-actions { gap: 6px; }
+  .playback-dock button { min-width: 27px; min-height: 28px; padding: 3px 6px; font-size: 11px; }
+  .playback-actions label { display: none; }
+  .playback-count { font-size: 10px; }
+  .demo-shell.has-preview .camera-trigger { bottom: 221px; }
   .camera-trigger { bottom: 102px; left: 5px; width: 38px; height: 38px; }
   .camera-modal { padding: 13px; border-radius: 13px; }
   .camera-head h2 { font-size: 16px; }

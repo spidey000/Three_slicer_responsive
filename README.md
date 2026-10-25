@@ -18,6 +18,7 @@ En la primera publicación, configura una vez **Settings → Pages → Build and
 - Motor real de laminado WebAssembly, perfiles de impresora, proceso y material, ajustes con el esquema y reglas de Three Slicer.
 - Transformación de modelos, edición de objetos, varias placas, soportes y pintura de soporte/material.
 - Vista previa de trayectorias, navegación por capas, estadísticas de impresión y exportación desde los controles originales.
+- Barra de [exploración y simulación del recorrido](./docs/REPRODUCCION_TRAYECTORIA.md): capa, movimiento, reproducción, avance rápido, pausa y parada. Mueve el marcador de boquilla sobre la trayectoria real ya laminada.
 - Apertura y vista previa de G-code y proyectos de resina compatibles, con las opciones que soporta el paquete.
 - En móvil, el panel lateral se convierte en un cajón de ajustes. El resto de acciones continúa usando los componentes nativos del visor.
 - Un icono de cámara abre una captura de ejemplo con marca de agua; la [integración de webcam](./docs/WEBCAM_INTEGRACION.md) contiene el contrato ficticio para recibir JPEG/PNG de la impresora.
@@ -40,7 +41,7 @@ npm run build
 npm run preview
 ```
 
-El script `prebuild` añade las reglas responsive al CSS aislado de la versión fijada de `three-slicer-viewer`. Esto permite adaptar el shell interno de su Shadow DOM sin duplicar el visor ni sustituir sus acciones.
+La app añade las reglas responsive al Shadow DOM abierto de `three-slicer-viewer`. El adaptador de Preview se limita a sus controles nativos; no duplica el motor de laminado ni el renderizador de trayectorias.
 
 ## Límites del alojamiento
 
