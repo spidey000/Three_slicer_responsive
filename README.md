@@ -66,7 +66,7 @@ A responsive browser-based slicer and toolpath preview built on [Three Slicer](h
 
 **[Try the online slicer](https://spidey000.github.io/Three_slicer_responsive/)** · **[Local setup](docs/AD4_LOCAL.md)** · **[FFAD4Manager CLI reference](https://github.com/spidey000/FFAD4Manager/blob/main/docs/CLI.md)**
 
-**Conservative printing defaults:** The standard 0.4 mm Adventurer 4 now opens with a low-speed, quality-oriented 0.20 mm profile. The original OrcaSlicer process remains selectable. See [the speed, acceleration and evidence reference](docs/AD4_CONSERVATIVE_PROFILE.md).
+**Conservative printing defaults:** The standard 0.4 mm Adventurer 4 now opens with a low-speed, quality-oriented 0.20 mm profile. All bundled AD4 processes share the conservative speed and acceleration settings; saved custom processes can intentionally override them. See [the speed, acceleration and evidence reference](docs/AD4_CONSERVATIVE_PROFILE.md).
 
 ## What works today
 
@@ -76,7 +76,9 @@ A responsive browser-based slicer and toolpath preview built on [Three Slicer](h
 | Load 3D models | Yes | STL, OBJ, 3MF, AMF, PLY and STEP/STP through the underlying viewer. |
 | 3D object/plate editing | Yes | Native viewer tools include transform, object management, multi-plate functions and painting where supported. |
 | Browser-side slicing | Yes | `three-slicer@0.4.0` WebAssembly worker; does not require the CLI or the printer. |
-| Adventurer 4 process/material presets | Yes | Uses the bundled fixed 0.4 mm Adventurer 4 printer profile, recommended process and filament catalog; editable settings. |
+| Adventurer 4 process/material presets | Yes | Fixed AD4 0.4 mm machine; all built-in process presets share cautious motion settings while retaining each process's other parameters. |
+| Save, edit and delete named process/filament profiles | Yes (browser-local) | Choose Save current settings as new profile in either dropdown. Saved custom presets persist in this browser's site storage; Update saved and Delete are available. No cloud synchronization. |
+| Artillery PLA Basic filament preset | Yes | 205°C nozzle, 210°C initial layer, 55°C bed; non-HS starting values based on Artillery's temperature range. |
 | Advanced slicing settings | Yes | Connected `SettingsPanel` with the same shared slicer settings state. |
 | Automatic re-slicing | Yes | Optional Auto slice; changing the model or settings invalidates previous generated G-code. |
 | Toolpath preview and simulated nozzle traversal | Yes | Layer and move scrubbing, play, fast-forward, pause and reset; simulated movement is **not** an accurate real-time print prediction. |
