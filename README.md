@@ -66,6 +66,8 @@ A responsive browser-based slicer and toolpath preview built on [Three Slicer](h
 
 **[Try the online slicer](https://spidey000.github.io/Three_slicer_responsive/)** · **[Local setup](docs/AD4_LOCAL.md)** · **[FFAD4Manager CLI reference](https://github.com/spidey000/FFAD4Manager/blob/main/docs/CLI.md)**
 
+**Conservative printing defaults:** The standard 0.4 mm Adventurer 4 now opens with a low-speed, quality-oriented 0.20 mm profile. The original OrcaSlicer process remains selectable. See [the speed, acceleration and evidence reference](docs/AD4_CONSERVATIVE_PROFILE.md).
+
 ## What works today
 
 | Feature | Available | Notes |
