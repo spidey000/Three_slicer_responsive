@@ -16,24 +16,45 @@ const panelData = { schema, uiTree, toggle: { makeCfg, disabledKeys } }
 const responsiveViewerCss = `
 @media (max-width: 767px) {
   .app-shell { font-size: 12px; }
-  .topbar { gap: 5px; padding: 0 6px; }
-  .topbar .tb-left, .topbar .tb-right { gap: 4px; min-width: 0; }
+  .topbar { flex: 0 0 86px; height: 86px; display: grid; grid-template-columns: minmax(0,1fr) auto;
+    grid-template-rows: 38px 38px; gap: 4px 8px; padding: 3px 8px; }
+  .topbar:has(.tb-gcode) { flex-basis: 122px; height: 122px; grid-template-rows: 38px 38px 34px; }
+  .topbar .tb-left { grid-column: 1 / -1; grid-row: 1; min-width: 0; width: 100%; flex: none;
+    overflow-x: auto; scrollbar-width: none; gap: 5px; }
+  .topbar .tb-left::-webkit-scrollbar { display: none; }
+  .topbar .tb-left > * { flex: 0 0 auto; }
+  .topbar .tb-tabs { grid-column: 1; grid-row: 2; justify-self: start; }
+  .topbar .tb-right { grid-column: 2; grid-row: 2; min-width: 0; flex: none; gap: 5px; }
+  .topbar .tb-gcode { grid-column: 1 / -1; grid-row: 3; min-width: 0; overflow: hidden; }
+  .topbar .tb-gcode span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tb-logo { font-size: 12px; white-space: nowrap; }
-  .tb-btn { padding: 4px 6px; font-size: 11px; white-space: nowrap; }
-  .tb-tabs button { padding: 5px 8px; font-size: 11px; }
-  .left-rail { flex-basis: 40px; padding: 6px 0; gap: 3px; }
+  .tb-btn { padding: 5px 7px; font-size: 11px; white-space: nowrap; }
+  .tb-tabs button { padding: 6px 12px; font-size: 11px; }
+  .left-rail { flex-basis: 42px; padding: 6px 0; gap: 3px; overflow-y: auto; scrollbar-width: none; }
   .left-rail button { width: 34px; height: 34px; }
   .sidebar { display: none !important; }
-  .vp-top-toolbar { top: 8px; max-width: calc(100% - 12px); }
+  .vp-top-toolbar { top: 8px; max-width: calc(100% - 16px); }
   .vp-top-toolbar button { width: 30px; height: 30px; }
-  .plate-bar { right: 8px; bottom: 67px; }
+  .plate-bar { right: 8px; bottom: 96px; max-width: calc(100% - 16px); overflow-x: auto; }
   .brush-panel { top: 50px; left: 6px; width: min(214px, calc(100% - 12px)); }
-  .stats-card, .bed-warn { left: 8px; bottom: 67px; max-width: calc(100% - 110px); font-size: 11px; }
+  .stats-card, .bed-warn { left: 8px; bottom: 96px; max-width: min(48%, 190px); font-size: 11px; }
 }
 @media (min-width: 768px) and (max-width: 1100px) {
-  .sidebar { flex-basis: 300px; width: 300px; }
+  .sidebar { flex-basis: min(300px, 35vw); width: min(300px, 35vw); }
   .topbar { gap: 7px; padding: 0 8px; }
   .tb-tabs button { padding-left: 12px; padding-right: 12px; }
+}`
+const responsiveSettingsCss = `
+@media (max-width: 767px) {
+  :host(.sp-embedded) .settings-panel { width: 100%; height: 100%; min-width: 0; min-height: 0; }
+  :host(.sp-embedded) .sp-top { flex: 0 0 auto; padding: 9px 10px; }
+  :host(.sp-embedded) .sp-body { flex: 1 1 auto; min-height: 0; max-height: none; overflow-y: auto; padding: 8px 10px 22px; }
+  .settings-panel .row { grid-template-columns: minmax(0,1fr) auto; }
+  .settings-panel .row .key { max-width: 115px; }
+  .settings-panel .row input:not([type="checkbox"]):not([type="color"]),
+  .settings-panel .row select, .settings-panel .row textarea { max-width: min(150px, 44vw); }
+  .sp-pages { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 3px; }
+  .sp-pages button { flex: 0 0 auto; }
 }`
 
 function applyPreset(base, preset, keys, idKey, name) {
@@ -69,9 +90,19 @@ export default function Demo() {
       for (const host of document.querySelectorAll('#root *')) {
         const root = host.shadowRoot
         if (!root || !root.querySelector('.app-shell') || root.querySelector('[data-responsive-demo]')) continue
+        const logo = root.querySelector('.tb-logo')
+        if (logo) logo.href = import.meta.env.BASE_URL
         const style = document.createElement('style')
         style.dataset.responsiveDemo = ''
         style.textContent = responsiveViewerCss
+        root.append(style)
+      }
+      for (const host of document.querySelectorAll('.settings-surface *')) {
+        const root = host.shadowRoot
+        if (!root || !root.querySelector('.settings-panel') || root.querySelector('[data-responsive-settings]')) continue
+        const style = document.createElement('style')
+        style.dataset.responsiveSettings = ''
+        style.textContent = responsiveSettingsCss
         root.append(style)
       }
     }
@@ -188,10 +219,9 @@ export default function Demo() {
             <option value="">Perfil de material</option>{filamentOptions.map(name => <option key={name} value={name}>{name}</option>)}
           </select></label>
         </div>
-        <div className="settings-panel"><SettingsPanel embedded settings={settings} setSettings={setSettings} {...panelData} /></div>
+        <div className="settings-surface"><SettingsPanel embedded settings={settings} setSettings={setSettings} {...panelData} /></div>
         <button className="drawer-slice" onClick={() => { setDrawer(false); setSliceRequest(value => value + 1) }}>Laminar modelo</button>
       </section>
     </>}
-    <a className="source-link" href="https://github.com/kimgh06/Three_Slicer" target="_blank" rel="noreferrer">Motor y visor Three Slicer · WebAssembly</a>
   </main>
 }
