@@ -23,3 +23,5 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Build production bundle
         run: npm run build
+      - name: Test local printer manager bridge
+        run: python3 -m unittest discover -s tests -p 'test_printer_manager_bridge.py'
