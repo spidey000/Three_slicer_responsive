@@ -5,7 +5,8 @@ const controlCache = new WeakMap()
 export function getPreviewControls(host) {
   if (!host) return null
   const cached = controlCache.get(host)
-  if (cached?.layer.isConnected && cached.move.isConnected) return cached
+  if (cached?.layer.isConnected && (!cached.move || cached.move.isConnected)
+    && (cached.move || !cached.root.querySelector('[data-testid="move-range"]'))) return cached
   const root = [...host.querySelectorAll('*')]
     .map(element => element.shadowRoot)
     .find(shadow => shadow?.querySelector('.app-shell'))
@@ -14,7 +15,7 @@ export function getPreviewControls(host) {
   const layer = find('layer-hi')
   const move = find('move-range')
   const single = find('single-layer-btn')
-  if (!layer || !move || !single) return null
+  if (!layer || !single) return null
   const controls = { root, layer, low: find('layer-lo'), move, single, reset: find('move-reset') }
   controlCache.set(host, controls)
   return controls
@@ -42,7 +43,7 @@ export function selectPreviewLayer(host, layerIndex, singleLayer = false) {
 
 export function scrubPreviewMove(host, moveIndex) {
   const controls = getPreviewControls(host)
-  return controls ? changeRange(controls.move, moveIndex) : false
+  return controls?.move ? changeRange(controls.move, moveIndex) : false
 }
 
 export function fullPreviewLayer(host) {
@@ -52,5 +53,5 @@ export function fullPreviewLayer(host) {
 
 export function previewMoveCount(host) {
   const controls = getPreviewControls(host)
-  return controls ? Number(controls.move.max) || 0 : 0
+  return controls?.move ? Number(controls.move.max) || 0 : 0
 }

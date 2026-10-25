@@ -85,7 +85,7 @@ export default function Demo() {
   const animation = useRef(null)
   const manualSelection = useRef(false)
   const playback = useRef({ layer: 0, move: 0, last: 0, remainder: 0, speed: 1, count: 0, waiting: false })
-  const [preview, setPreview] = useState({ mode: 'prepare', count: 0, layer: 0, move: 0, max: 0, single: false, playing: false, speed: 1 })
+  const [preview, setPreview] = useState({ mode: 'prepare', count: 0, layer: 0, move: 0, max: 0, single: false, playing: false, speed: 1, hasMoves: false, plate: 0 })
   const previewVisible = preview.mode === 'preview' && preview.count > 0
 
   const pausePlayback = () => {
@@ -122,7 +122,7 @@ export default function Demo() {
   }
 
   const playPlayback = (speed = 1) => {
-    if (!previewVisible || !getPreviewControls(viewerHost.current)) return
+    if (!previewVisible || !getPreviewControls(viewerHost.current)?.move) return
     if (animation.current != null) cancelAnimationFrame(animation.current)
     const state = playback.current
     state.count = preview.count
@@ -181,6 +181,19 @@ export default function Demo() {
   }
 
   useEffect(() => () => { if (animation.current != null) cancelAnimationFrame(animation.current) }, [])
+
+  useEffect(() => {
+    if (!previewVisible) return
+    let frame
+    let attempts = 0
+    const inspect = () => {
+      const controls = getPreviewControls(viewerHost.current)
+      if (!controls && attempts++ < 12) { frame = requestAnimationFrame(inspect); return }
+      setPreview(current => ({ ...current, hasMoves: Boolean(controls?.move), max: previewMoveCount(viewerHost.current) }))
+    }
+    frame = requestAnimationFrame(inspect)
+    return () => cancelAnimationFrame(frame)
+  }, [previewVisible, preview.plate, preview.count])
 
   useEffect(() => {
     const query = window.matchMedia('(max-width: 767px)')
@@ -321,13 +334,14 @@ export default function Demo() {
             requestAnimationFrame(() => setPreview(current => ({ ...current, max: previewMoveCount(viewerHost.current) })))
           }
           if (event.type === 'moveScrub' && animation.current == null) setPreview(current => ({ ...current, move: event.value.at, max: event.value.max }))
-          if (event.type === 'selectedPlate') { pausePlayback(); manualSelection.current = false; setPreview(current => ({ ...current, layer: 0, move: 0 })) }
+          if (event.type === 'selectedPlate') { pausePlayback(); manualSelection.current = false; setPreview(current => ({ ...current, plate: event.value, layer: 0, move: 0 })) }
         }}
         onSliced={({ stats }) => {
           pausePlayback()
           manualSelection.current = false
           setProgress(null)
           setStatus(`Laminado listo · ${stats?.layers ?? '—'} capas`)
+          requestAnimationFrame(() => setPreview(current => ({ ...current, hasMoves: Boolean(getPreviewControls(viewerHost.current)?.move) })))
         }}
       />
     </div>
@@ -341,14 +355,14 @@ export default function Demo() {
           onClick={() => selectLayer(preview.layer, !preview.single)} title="Mostrar solo esta capa">Solo capa</button>
       </div>
       <div className="playback-actions">
-        <button type="button" onClick={() => playPlayback(1)} aria-label="Reproducir recorrido" title="Reproducir">▶</button>
-        <button type="button" onClick={() => playPlayback(8)} aria-label="Avance rápido del recorrido" title="Avance rápido ×8">⏩</button>
-        <button type="button" onClick={pausePlayback} aria-label="Pausar recorrido" title="Pausar">Ⅱ</button>
-        <button type="button" onClick={stopPlayback} aria-label="Detener y volver al inicio" title="Detener y volver al inicio">■</button>
+        <button type="button" disabled={!preview.hasMoves} onClick={() => playPlayback(1)} aria-label="Reproducir recorrido" title="Reproducir">▶</button>
+        <button type="button" disabled={!preview.hasMoves} onClick={() => playPlayback(8)} aria-label="Avance rápido del recorrido" title="Avance rápido ×8">⏩</button>
+        <button type="button" disabled={!preview.hasMoves} onClick={pausePlayback} aria-label="Pausar recorrido" title="Pausar">Ⅱ</button>
+        <button type="button" disabled={!preview.hasMoves} onClick={stopPlayback} aria-label="Detener y volver al inicio" title="Detener y volver al inicio">■</button>
         <label htmlFor="preview-move">Movimiento</label>
-        <input id="preview-move" type="range" min="0" max={Math.max(1, preview.max)} value={Math.min(preview.move, Math.max(1, preview.max))}
+        <input id="preview-move" type="range" disabled={!preview.hasMoves} min="0" max={Math.max(1, preview.max)} value={Math.min(preview.move, Math.max(1, preview.max))}
           onChange={event => { pausePlayback(); scrubPreviewMove(viewerHost.current, Number(event.target.value)) }} aria-label="Explorar movimientos de la capa" />
-        <span className="playback-count">{preview.move} / {preview.max}</span>
+        <span className="playback-count">{preview.hasMoves ? `${preview.move} / ${preview.max}` : 'Sin boquilla FFF'}</span>
       </div>
     </section>}
 

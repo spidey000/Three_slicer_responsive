@@ -34,6 +34,8 @@ html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; }
 .playback-dock button { flex: 0 0 auto; min-width: 30px; min-height: 30px; padding: 3px 8px; border: 1px solid #46525d;
   border-radius: 7px; background: #303944; color: #e8eef2; font: 700 12px/1.2 system-ui,sans-serif; cursor: pointer; }
 .playback-dock button:hover, .playback-dock button.is-selected { background: #a7e43d; border-color: #a7e43d; color: #16200c; }
+.playback-dock button:disabled, .playback-dock input:disabled { opacity: .42; cursor: default; }
+.playback-dock button:disabled:hover { background: #303944; border-color: #46525d; color: #e8eef2; }
 .playback-dock button:focus-visible, .playback-dock input:focus-visible { outline: 2px solid #a7e43d; outline-offset: 2px; }
 .demo-shell.has-preview .camera-trigger { bottom: 122px; }
 .mobile-nav, .settings-drawer, .drawer-scrim { display: none; }
