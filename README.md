@@ -179,17 +179,17 @@ The CLI has broader capabilities than this web UI. For details, flags and precis
 ## Architecture, limits and safety
 
 - **Static demo:** GitHub Pages hosts only the browser slicer. The `/api/printer/*` routes do **not** exist on Pages; a static site cannot reach your local printer through those paths.
-- **Local bridge:** `server/ad4_bridge.py` serves `dist/` and implements `GET /api/printer/status`, `GET /api/printer/camera`, and `POST /api/printer/jobs?start=true|false` (plain-text G-code, 100 MiB limit). It runs `ffadv4manager` via subprocess without a shell and listens only on `127.0.0.1:8765` by default.
+- **Local bridge:** `server/ad4_bridge.py` serves `dist/` and exposes the allowlisted endpoints used by Printer Manager (state, discovery, files, job commands, diagnostics, snapshots, timelapse, Linux notifications, CLI connection profiles and uploads). It runs `ffadv4manager` via subprocess without a shell and listens only on `127.0.0.1:8765` by default. [Endpoint and safety details](docs/PRINTER_MANAGER.md).
 - **Access control:** This bridge is for local trusted use. It has no user login/authentication; do not expose it directly to the LAN, Internet or a public reverse proxy. A phone on another device cannot open the loopback address of your computer. Secure remote access requires a separately designed authenticated setup.
 - **Browser requirements:** The viewer needs WebGL. GitHub Pages cannot set isolation headers needed for `SharedArrayBuffer`; the slicer may fall back to a single-threaded worker.
-- **Slicing profile:** This app pins the bundled `Flashforge Adventurer 4 Series 0.4 Nozzle` preset. It is not a multi-printer management frontend.
+- **Slicing profile:** This app pins the bundled `Flashforge Adventurer 4 Series 0.4 Nozzle` preset for slicing. The new discovered-printer list and CLI connection profiles select a command target; they do not change slicer machine presets.
 - **Hardware testing:** We can validate builds and the deployed browser UI automatically; we cannot claim the physical print protocol is verified across printer firmware versions.
 
 ## Developer notes
 
 `Viewport`, `SettingsPanel` and `useSlicer` share the same settings. The responsive styling is injected into the viewer's open Shadow DOM. The [toolpath control bridge](docs/REPRODUCCION_TRAYECTORIA.md) drives the actual upstream Preview inputs rather than a second renderer. If `three-slicer-viewer` changes its internal test IDs, re-test layer and movement scrubbing.
 
-The GitHub Pages build deploys automatically from `main` using GitHub Actions. A post-deployment Chromium test checks the empty-state card at several mobile widths. Run `npm run build` to check the production bundle.
+The GitHub Pages build deploys automatically from `main` using GitHub Actions. A post-deployment Chromium test checks the empty-state card at several mobile widths and opens the printer manager at 390px. Run `npm run build` to check the production bundle.
 
 ## Credits and licenses
 
