@@ -1,41 +1,65 @@
-# Three Slicer web + Adventurer 4 local
+# Local Adventurer 4 setup
 
-La aplicación local usa exclusivamente el perfil **Flashforge Adventurer 4 Series 0.4 Nozzle** del catálogo OrcaSlicer incluido en `three-slicer@0.4.0`. Carga su perfil de proceso recomendado y el primer filamento recomendado disponible. El selector de impresoras desaparece; proceso, material y ajustes permanecen editables. Antes de imprimir, comprueba físicamente boquilla, filamento, superficie y nivelación.
+This guide installs **ThreeSlicer Responsive**, a browser slicer with an optional local bridge to the **FlashForge Adventurer 4**. The printer profile is fixed to the bundled **Flashforge Adventurer 4 Series 0.4 Nozzle** preset. Process and filament parameters remain editable. Confirm that your physical nozzle, bed, filament and printer match the selected settings.
 
-## Arranque
+## Requirements
 
-En la máquina conectada a la misma red de la AD4:
+- Linux computer with Node.js 20+, npm, Python 3.9+, Python venv and pip.
+- Browser with WebGL support.
+- A printer on the same trusted network for printer features. Slicing alone works without the printer.
+- An explicit printer host/IP; the CLI can discover printers without changing settings: `ffadv4manager discover --json`.
 
-```sh
+## Install and start
+
+Run from the same parent directory, substituting your printer's **actual** LAN IP:
+
+```bash
 git clone https://github.com/spidey000/FFAD4Manager.git
+git clone https://github.com/spidey000/Three_slicer_responsive.git
 python3 -m venv .venv
 . .venv/bin/activate
-pip install -e ./FFAD4Manager
+python -m pip install --upgrade pip
+python -m pip install -e ./FFAD4Manager
 ffadv4manager config set --host 192.168.1.50
-
+ffadv4manager status --json
 cd Three_slicer_responsive
 npm ci
 npm run build
 npm run local
 ```
 
-Abre `http://127.0.0.1:8765/Three_slicer_responsive/`. Para desarrollo, ejecuta también `npm run dev`: Vite envía `/api` al puente local. El puente escucha **solo** en `127.0.0.1`; no expongas su puerto directamente a Internet. Puedes proporcionar `AD4_HOST`, `AD4_CLI` y `AD4_WEB_PORT` como variables de entorno. Si usas `AD4_WEB_PORT` distinto de `8765`, ajusta también el proxy de Vite.
+Open **http://127.0.0.1:8765/Three_slicer_responsive/** in a browser **on the computer running the bridge**. Stop the bridge with Ctrl+C. A mobile device cannot use another computer's loopback address; a separate, properly authenticated remote-access design would be required.
 
-## Flujo
+`npm run dev` starts a Vite development frontend, which proxies `/api` to `http://127.0.0.1:8765`; run the local bridge alongside it for printer features. The server accepts `AD4_HOST` (overrides CLI-configured printer host), `AD4_CLI` (CLI command path) and `AD4_WEB_PORT` (local HTTP port, default 8765). When changing the port, update the Vite proxy if necessary.
 
-1. Carga un modelo y modifica proceso, material o cualquier parámetro. **Laminar** usa el motor WebAssembly. El interruptor **Auto slice** vuelve a laminar tras cambios.
-2. Al recibir `onSliced`, la web conserva el G-code exacto del resultado y muestra **Imprimir** y **Solo enviar**. Un cambio de configuración o de objetos invalida el resultado y restaura **Laminar**.
-3. `POST /api/printer/jobs?start=true` pasa el G-code al puente. Éste crea un archivo temporal y llama a `ffadv4manager upload ARCHIVO --start`: el CLI convierte G-code a GX automáticamente, verifica el nombre en la lista de la impresora y después selecciona/inicia. `start=false` llama a `upload` sin iniciar.
-4. El estado se consulta con `ffadv4manager status --json` y la cámara usa `ffadv4manager camera snapshot`. Si falla la conexión, el modal presenta la imagen con marca de agua de prueba.
+The bridge listens only on **127.0.0.1**. It has **no login/authentication**. Do not expose this HTTP port, the printer's legacy TCP endpoint or the unauthenticated MJPEG camera stream directly to an untrusted network.
 
-El CLI rechaza subir cuando detecta una impresión activa (no se utiliza `--force`). Su comprobación M661 confirma el nombre, **no** la integridad del contenido; «Solo enviar» evita M23/M24 desde el software, pero su documentación pide supervisar el resultado en una AD4 real. La conversión GX empaqueta G-code, no reescribe órdenes incompatibles. Esta integración no se ha probado con una impresora física conectada en este entorno.
+## What the local bridge actually implements
 
-## API local
+| HTTP endpoint | FFAD4Manager action | Behavior |
+| --- | --- | --- |
+| `GET /api/printer/status` | `status --json` | Observed printer state, shown as a compact status label in the UI. |
+| `GET /api/printer/camera` | `camera snapshot TEMP.jpg` | Returns a single JPEG. If it fails, the browser shows a labeled placeholder. |
+| `POST /api/printer/jobs?start=false` | `upload TEMP.gcode` | Upload only: no explicit M23/M24 selection or start in this CLI path. |
+| `POST /api/printer/jobs?start=true` | `upload TEMP.gcode --start` | Upload and explicitly request selection/start after upload confirmation. |
 
-| Ruta | Función |
-| --- | --- |
-| `GET /api/printer/status` | Estado JSON del CLI |
-| `GET /api/printer/camera` | Primer fotograma JPEG del MJPEG |
-| `POST /api/printer/jobs?start=true\|false` | G-code `text/plain` (máximo 100 MB); subir e iniciar o solo subir |
+The job body is plain-text G-code, up to 100 MiB. The bridge invokes CLI subprocesses with argument arrays rather than a shell, stores job bytes in a temporary directory, and sends back a JSON status/error response. It does not provide the rest of the CLI's commands; see the feature matrix in the root README.
 
-El puente llama al CLI como proceso con argumentos separados (sin shell), usa directorio temporal y responde con errores JSON. El sitio publicado en GitHub Pages conserva el laminador, pero sus funciones de impresora requieren esta instancia local.
+## Normal workflow
+
+1. Read the status and check that the printer is available. Inspect the physical setup yourself.
+2. Import a model, choose process/material and settings, and click **Slice**. **Auto slice** is optional.
+3. Review G-code/toolpath preview. Changing the model or settings invalidates the previous sliced result.
+4. Select **Upload only** or **Print**. The latter sends the `--start` flag; both affect printer storage/state and must be supervised.
+
+**Safety and verification:** The CLI rejects uploads to a printer reported as actively printing by default; the UI does not pass `--force`. Upload-only avoids M23/M24 but M601 S1 has firmware-dependent, incompletely documented behavior: it is **not** proven physically safe to treat upload-only as impossible to start a job. M661 confirms a file **name** is listed but not its contents or size. G-code-to-GX wrapping does not fix invalid toolpath commands. Actual printer-side success cannot be inferred from an HTTP 200 response.
+
+## Troubleshooting
+
+- **Disconnected** on the hosted GitHub Pages version is expected: Pages serves a static slicer and has no local `/api` routes.
+- **Disconnected** locally: verify the venv is active, `ffadv4manager status --json`, host/IP, printer LAN connectivity, and local bridge logs.
+- **Camera unavailable:** verify `ffadv4manager camera snapshot /tmp/ad4-test.jpg`; the camera HTTP endpoint is independent of printer-control TCP.
+- **Missing build:** run `npm ci && npm run build` before `npm run local`.
+- **Slicing problems:** verify browser WebGL, compatible models, settings, and console errors.
+
+Related: [FFAD4Manager full CLI reference](https://github.com/spidey000/FFAD4Manager/blob/main/docs/CLI.md) and [root README feature matrix](../README.md#what-ffad4manager-can-do--and-what-this-web-ui-exposes).
