@@ -17,7 +17,7 @@ const panelData = { schema, uiTree, toggle: { makeCfg, disabledKeys } }
 const AD4 = 'Flashforge Adventurer 4 Series 0.4 Nozzle'
 const ad4Catalog = { ...bundledCatalog,
   printersByVendor: { Flashforge: { [AD4]: bundledCatalog.printersByVendor.Flashforge[AD4] } },
-  printerTechByVendor: { Flashforge: { [AD4]: 'FFF' } },
+  printerTechByVendor: { Flashforge: 'FFF' },
 }
 const responsiveViewerCss = `
 .app-body { padding-bottom: var(--demo-preview-bottom, 0px); }
@@ -106,7 +106,7 @@ export default function Demo() {
     const filament = catalog.filament.recommendedFor(AD4)[0] || catalog.filament.listFor(AD4)[0]
     setSettings(current => {
       let next = preset ? applyPreset(current, catalog.process.settingsFor(preset), catalog.process.keys, 'print_settings_id', preset) : current
-      if (filament) next = applyPreset(next, catalog.filament.settingsFor(filament), catalog.filament.keys, 'filament_settings_id', filament)
+      if (filament) next = applyPreset(next, catalog.filament.settingsFor(filament.name), catalog.filament.keys, 'filament_settings_id', filament.name)
       return next
     })
   }, [catalog])
