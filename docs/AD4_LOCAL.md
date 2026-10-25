@@ -1,6 +1,6 @@
-# Local Adventurer 4 setup
+# Local Adventurer 4 setup (development only)
 
-This guide installs **ThreeSlicer Responsive**, a browser slicer with an optional local bridge to the **FlashForge Adventurer 4**. The printer profile is fixed to the bundled **Flashforge Adventurer 4 Series 0.4 Nozzle** preset. Process and filament parameters remain editable. Confirm that your physical nozzle, bed, filament and printer match the selected settings.
+This guide covers **loopback-only development and troubleshooting**. For the recommended **secure worldwide deployment using Cloudflare Tunnel + Access**, follow [REMOTE_ACCESS.md](REMOTE_ACCESS.md) instead. ThreeSlicer Responsive is a browser slicer with a local bridge to the **FlashForge Adventurer 4**. The printer profile is fixed to the bundled **Flashforge Adventurer 4 Series 0.4 Nozzle** preset. Process and filament parameters remain editable. Confirm that your physical nozzle, bed, filament and printer match the selected settings.
 
 ## Requirements
 
@@ -28,11 +28,11 @@ npm run build
 npm run local
 ```
 
-Open **http://127.0.0.1:8765/Three_slicer_responsive/** in a browser **on the computer running the bridge**. Stop the bridge with Ctrl+C. A mobile device cannot use another computer's loopback address; a separate, properly authenticated remote-access design would be required.
+Open **http://127.0.0.1:8765/Three_slicer_responsive/** in a browser **on the computer running the bridge**. Stop the bridge with Ctrl+C. A mobile device cannot use another computer's loopback address; the supported remote setup is described in [REMOTE_ACCESS.md](REMOTE_ACCESS.md).
 
 `npm run dev` starts a Vite development frontend, which proxies `/api` to `http://127.0.0.1:8765`; run the local bridge alongside it for printer features. The server accepts `AD4_HOST` (overrides CLI-configured printer host), `AD4_CLI` (CLI command path) and `AD4_WEB_PORT` (local HTTP port, default 8765). When changing the port, update the Vite proxy if necessary.
 
-The bridge listens only on **127.0.0.1**. It has **no login/authentication**. Do not expose this HTTP port, the printer's legacy TCP endpoint or the unauthenticated MJPEG camera stream directly to an untrusted network.
+The bridge always listens on **127.0.0.1**. With no `CF_ACCESS_*` configuration, it provides **local-only unauthenticated mode**, which must **not** be published via a Tunnel. With the four complete Cloudflare Access settings, it enables signed JWT validation and strict public Host/Origin checks; see [REMOTE_ACCESS.md](REMOTE_ACCESS.md). Never expose the legacy printer TCP port or MJPEG camera stream directly.
 
 ## What the local bridge actually implements
 
@@ -45,7 +45,7 @@ The bridge listens only on **127.0.0.1**. It has **no login/authentication**. Do
 
 The job body is plain-text G-code, up to 100 MiB. The bridge invokes CLI subprocesses with argument arrays rather than a shell, stores job bytes in a temporary directory, and sends back a JSON status/error response. Printer Manager now adds discovery, remote-file lists and printing, pause/resume/cancel, diagnostics, fan on/off, bounded timelapse, local Linux notifications and connection-profile management through additional allowlisted endpoints. See [Printer Manager reference](PRINTER_MANAGER.md).
 
-**Security for mobile:** this server intentionally listens on loopback only and has no authentication. A phone cannot control it through GitHub Pages or another machine's 127.0.0.1. Use a properly authenticated, encrypted access layer if remote phone control is needed. Do not expose port 8765 or 8899 without one.
+**Mobile access:** GitHub Pages cannot talk to your printer, but a private HTTPS hostname protected by Cloudflare Access and routed via Cloudflare Tunnel to this loopback server **can** provide remote control. Enable and validate `CF_ACCESS_*` origin authentication before publishing the Tunnel route. Do not expose ports 8765, 8899 or 8080 directly.
 
 ## Normal workflow
 
