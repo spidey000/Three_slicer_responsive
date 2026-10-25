@@ -123,9 +123,12 @@ export default function Demo() {
     const timer = setInterval(refresh, 8000)
     return () => clearInterval(timer)
   }, [])
+  const captureCamera = () => fetch('/api/printer/camera')
+    .then(r => { if (!r.ok) throw Error(); return r.blob() })
+    .then(blob => { setCameraSrc(current => { if (current) URL.revokeObjectURL(current); return URL.createObjectURL(blob) }); setTestCapturedAt(new Date()) })
+    .catch(() => setCameraSrc(null))
   useEffect(() => {
-    if (!cameraOpen) return
-    fetch('/api/printer/camera').then(r => { if (!r.ok) throw Error(); return r.blob() }).then(blob => setCameraSrc(URL.createObjectURL(blob))).catch(() => setCameraSrc(null))
+    if (cameraOpen) captureCamera()
     return () => setCameraSrc(current => { if (current) URL.revokeObjectURL(current); return null })
   }, [cameraOpen])
 
@@ -433,7 +436,7 @@ export default function Demo() {
         <figure className="camera-frame"><img src={cameraSrc || `${import.meta.env.BASE_URL}webcam-test.svg`} alt={cameraSrc ? 'Captura de la Adventurer 4' : 'Imagen de prueba de impresora 3D'} />
           <figcaption>{cameraSrc ? 'Captura actual de la Adventurer 4' : 'Imagen de prueba · Sin conexión'}</figcaption></figure>
         <footer className="camera-foot"><span>Captura simulada: {testCapturedAt.toLocaleString('es-ES')}</span>
-          <button type="button" onClick={() => setTestCapturedAt(new Date())}>Actualizar prueba</button></footer>
+          <button type="button" onClick={captureCamera}>{cameraSrc ? 'Actualizar captura' : 'Reintentar cámara'}</button></footer>
       </section>
     </div>}
 
