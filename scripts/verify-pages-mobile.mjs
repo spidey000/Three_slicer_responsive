@@ -101,6 +101,31 @@ async function checkWidth(width) {
         throw new Error('Mobile settings panel is not in English')
       }
       await page.screenshot({ path: `${output}/settings-mobile-${width}.png`, fullPage: true })
+
+      // Save process + material snapshots from the two dropdowns, then reload.
+      await page.waitForFunction(() => document.querySelector('#ad4-process-select')?.options.length > 2)
+      await page.locator('#ad4-process-select').selectOption('__save_new_process_profile__')
+      await page.locator('#new-profile-name').fill('E2E custom process')
+      await page.getByRole('button', { name: 'Save profile' }).click()
+      if (await page.locator('#ad4-process-select').inputValue() !== 'E2E custom process') {
+        throw new Error('Saved process was not selected')
+      }
+      await page.locator('#ad4-material-select').selectOption('__save_new_filament_profile__')
+      await page.locator('#new-profile-name').fill('E2E custom filament')
+      await page.getByRole('button', { name: 'Save profile' }).click()
+      if (await page.locator('#ad4-material-select').inputValue() !== 'E2E custom filament') {
+        throw new Error('Saved material was not selected')
+      }
+      if (!await page.locator('#ad4-material-select option').filter({ hasText: 'Artillery PLA Basic' }).count()) {
+        throw new Error('Artillery PLA Basic preset is missing')
+      }
+      await page.reload({ waitUntil: 'domcontentloaded' })
+      await page.locator('.nav-setting').click()
+      await page.waitForFunction(() => document.querySelector('#ad4-process-select')?.options.length > 2)
+      const savedProcess = await page.locator('#ad4-process-select option').filter({ hasText: 'E2E custom process' }).count()
+      const savedMaterial = await page.locator('#ad4-material-select option').filter({ hasText: 'E2E custom filament' }).count()
+      if (!savedProcess || !savedMaterial) throw new Error('Custom profiles did not survive a reload')
+      await page.screenshot({ path: `${output}/saved-profiles-mobile-${width}.png`, fullPage: true })
       await page.locator('.close-drawer').click()
     }
 
