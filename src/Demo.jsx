@@ -76,9 +76,11 @@ const responsiveViewerCss = `
     column-gap:6px; row-gap:3px; padding:6px 10px 5px; }
   .topbar:has(.tb-gcode) { grid-template-rows:39px 35px 32px; min-height:120px; }
   .topbar .tb-left { grid-column:1; grid-row:1; display:flex; align-items:center; gap:5px; width:100%;
-    min-width:0; flex:none; overflow:hidden; }
+    min-width:0; flex:none; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; }
   .topbar .tb-left > * { flex:0 0 auto; }
   .tb-logo { font-size:13px; white-space:nowrap; margin-right:2px; }
+  .tb-re { display:none; }
+  .topbar .tb-left::-webkit-scrollbar { display:none; }
   .tb-re { font-size:9px; margin-left:1px; padding:1px 3px; }
   .topbar .tb-left .tb-btn { flex:0 0 32px; display:grid; place-items:center; width:32px;
     height:34px; padding:5px; border-radius:9px; }
@@ -91,7 +93,7 @@ const responsiveViewerCss = `
   .topbar .tb-right { grid-column:2; grid-row:2; min-width:0; width:auto; gap:5px; justify-content:flex-end; }
   .topbar .tb-right .tb-icon { width:33px; height:33px; border-radius:9px; }
   .topbar .ad4-topbar { grid-column:2; grid-row:1; margin:0; justify-self:end; gap:5px; }
-  .ad4-topbar .ad4-printer-state { max-width:125px; height:34px; padding:5px 7px; font-size:10px; }
+  .ad4-topbar .ad4-printer-state { max-width:114px; height:34px; padding:5px 7px; font-size:10px; }
   .ad4-topbar .camera-trigger { flex-basis:34px; width:34px; height:34px; }
   .topbar .tb-gcode { grid-column:1 / -1; grid-row:3; min-width:0; overflow:hidden; }
   .topbar .tb-gcode span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
