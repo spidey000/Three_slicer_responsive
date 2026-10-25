@@ -13,7 +13,7 @@ import './step_loader.js'
 import { AD4_STOCK_PROCESS, AD4_SAFE_PROCESS, applyAd4SafeMachineLimits, applyAd4SafeProcess } from './ad4SafeProfile.js'
 import {
   SAVE_PROCESS_OPTION, SAVE_FILAMENT_OPTION, ARTILLERY_PLA_BASIC,
-  readProfileLibrary, writeProfileLibrary, addCustomProfile, replaceCustomProfile, removeCustomProfile,
+  browserProfileStorage, readProfileLibrary, writeProfileLibrary, addCustomProfile, replaceCustomProfile, removeCustomProfile,
   makeArtilleryPlaBasic,
 } from './profileLibrary.js'
 import { fullPreviewLayer, getPreviewControls, previewMoveCount, scrubPreviewMove, selectPreviewLayer } from './previewBridge.js'
@@ -370,7 +370,7 @@ export default function Demo() {
   const [playbackExpanded, setPlaybackExpanded] = useState(() => !window.matchMedia('(max-width: 767px)').matches)
   const [sliceRequest, setSliceRequest] = useState(0)
   const [catalog, setCatalog] = useState(null)
-  const [profileLibrary, setProfileLibrary] = useState(() => readProfileLibrary(window.localStorage))
+  const [profileLibrary, setProfileLibrary] = useState(() => readProfileLibrary(browserProfileStorage()))
   const [saveDialog, setSaveDialog] = useState(null)
   const [profileName, setProfileName] = useState('')
   const [profileError, setProfileError] = useState('')
@@ -792,7 +792,7 @@ export default function Demo() {
   function persistLibrary(next) {
     // Commit to storage before reporting success. A blocked/private storage write
     // must never appear as a saved profile.
-    writeProfileLibrary(window.localStorage, next)
+    writeProfileLibrary(browserProfileStorage(), next)
     setProfileLibrary(next)
   }
 
