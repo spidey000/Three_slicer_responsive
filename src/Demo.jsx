@@ -130,7 +130,7 @@ const responsiveViewerCss = `
 .app-body { position:relative; }
 .topbar .tb-btn, .topbar .tb-icon, .camera-trigger { box-shadow:0 1px 0 #ffffff08 inset; }
 .empty-hint { width:min(370px,calc(100% - 32px)); height:auto; min-height:0;
-  position:absolute; top:48%; left:50%; right:auto; bottom:auto; inset:auto;
+  position:absolute; inset:48% auto auto 50%; box-sizing:border-box; max-width:calc(100% - 32px);
   transform:translate(-50%,-50%); padding:24px 22px 22px;
   background:rgba(25,33,41,.93); border:1px solid #354550;
   box-shadow:0 16px 55px #0007; backdrop-filter:blur(14px);
@@ -197,7 +197,7 @@ const responsiveViewerCss = `
   .vp-top-toolbar button { width:32px; height:32px; }
   .vp-top-toolbar button:disabled { opacity:.22; }
   .vp-top-toolbar button img { width:19px; height:19px; }
-  .empty-hint { top:49%; width:min(330px,calc(100% - 28px)); padding:24px 18px; border-radius:19px; }
+  .empty-hint { inset:49% auto auto 50%; width:min(330px,calc(100% - 28px)); max-width:calc(100% - 28px); padding:24px 18px; border-radius:19px; }
   .empty-hint .eh-title { font-size:16px; }
   .empty-hint .eh-btn { min-height:44px; }
   .plate-bar { bottom:14px; }
@@ -215,7 +215,7 @@ const responsiveViewerCss = `
   .topbar .camera-trigger { width:33px; height:33px; }
 }
 @media(max-height:600px) and (max-width:767px) {
-  .empty-hint { top:48%; padding:16px; }
+  .empty-hint { inset:48% auto auto 50%; padding:16px; }
   .empty-hint .eh-icon { width:44px; height:44px; font-size:26px; }
 }
 `
