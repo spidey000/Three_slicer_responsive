@@ -44,3 +44,30 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  verify-mobile:
+    name: Verify deployed mobile layout
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright browser
+        run: |
+          npm install --no-save --no-package-lock playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Check live Pages on mobile viewports
+        env:
+          PAGES_URL: https://spidey000.github.io/Three_slicer_responsive/
+        run: node scripts/verify-pages-mobile.mjs
+      - name: Upload mobile screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-pages-layout
+          path: pages-mobile-screenshots/
+          if-no-files-found: ignore
