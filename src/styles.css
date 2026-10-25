@@ -304,7 +304,7 @@ button:focus-visible, select:focus-visible { outline: 2px solid #a3e635; outline
 .profile-save-dialog .profile-save-note { color:#91a4b2; font-size:11px; }
 .profile-save-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
 .profile-save-actions button { min-height:44px; padding:8px 12px; border:1px solid #40505e; border-radius:11px;
-  font:700 12px inherit; cursor:pointer; }
+  font-family:inherit; font-size:12px; font-weight:700; cursor:pointer; }
 .profile-save-actions .profile-cancel { color:#e2eaf0; background:#29343e; }
 .profile-save-actions .profile-confirm { color:#182109; background:#a3e635; border-color:#a3e635; }
 @media(min-width:768px) {
