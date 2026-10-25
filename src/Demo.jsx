@@ -219,6 +219,7 @@ export default function Demo() {
   const [plateSettings, setPlateSettings] = useState({})
   const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 767px)').matches)
   const [drawer, setDrawer] = useState(false)
+  const [playbackExpanded, setPlaybackExpanded] = useState(() => !window.matchMedia('(max-width: 767px)').matches)
   const [sliceRequest, setSliceRequest] = useState(0)
   const [catalog, setCatalog] = useState(null)
   const [status, setStatus] = useState('Abre o arrastra un modelo para empezar')
@@ -234,7 +235,7 @@ export default function Demo() {
   const [testCapturedAt, setTestCapturedAt] = useState(() => new Date())
   const cameraButton = useRef(null)
   const cameraClose = useRef(null)
-  const statsCollapsed = useRef(false)
+  const statsCollapsed = useRef(true)
   const [toolbarTarget, setToolbarTarget] = useState(null)
   const viewerHost = useRef(null)
   const animation = useRef(null)
@@ -403,63 +404,147 @@ export default function Demo() {
     return () => query.removeEventListener?.('change', update)
   }, [])
 
-  // The upstream viewer deliberately isolates its UI in Shadow DOM. Keep using that component, but add the
-  // responsive layout rules into its open root so its real tools remain intact at phone/tablet widths.
+
+  // Style the real upstream Shadow DOM controls without replacing their functionality.
+  // Discover nested settings hosts, including the desktop sidebar, not only the mobile drawer.
   useEffect(() => {
     const observed = new WeakSet()
-    const install = () => {
-      for (const host of document.querySelectorAll('#root *')) {
-        const root = host.shadowRoot
-        if (!root || !root.querySelector('.app-shell')) continue
-        if (!observed.has(root)) { observer.observe(root, { childList: true, subtree: true }); observed.add(root) }
-        const logo = root.querySelector('.tb-logo')
-        if (logo) logo.href = import.meta.env.BASE_URL
-        if (!root.querySelector('[data-responsive-demo]')) {
-          const style = document.createElement('style')
-          style.dataset.responsiveDemo = ''
-          style.textContent = responsiveViewerCss
-          root.append(style)
-        }
-        const topbar = root.querySelector('.topbar')
-        if (topbar) {
-          let target = topbar.querySelector('[data-ad4-topbar]')
-          if (!target) { target = document.createElement('div'); target.className = 'ad4-topbar'; target.dataset.ad4Topbar = ''; topbar.insertBefore(target, topbar.querySelector('.tb-right')) }
-          setToolbarTarget(current => current === target ? current : target)
-        }
-        const card = root.querySelector('.stats-card')
-        if (card) {
-          card.classList.toggle('is-collapsed', statsCollapsed.current)
-          if (!card.querySelector('.stats-toggle')) {
-            const toggle = document.createElement('button')
-            toggle.type = 'button'
-            toggle.className = 'stats-toggle'
-            toggle.addEventListener('click', () => {
-              statsCollapsed.current = !statsCollapsed.current
-              card.classList.toggle('is-collapsed', statsCollapsed.current)
-              toggle.setAttribute('aria-expanded', String(!statsCollapsed.current))
-              toggle.textContent = statsCollapsed.current ? '▸ Datos de laminado' : '▾ Datos de laminado'
-            })
-            card.prepend(toggle)
-          }
-          const toggle = card.querySelector('.stats-toggle')
-          toggle.setAttribute('aria-expanded', String(!statsCollapsed.current))
-          const label = statsCollapsed.current ? '▸ Datos de laminado' : '▾ Datos de laminado'
-          if (toggle.textContent !== label) toggle.textContent = label
-        }
+    let frame = null
+    const setText = (node, value) => {
+      if (node && node.textContent !== value) node.textContent = value
+    }
+    const observe = (root, observer) => {
+      if (!observed.has(root)) {
+        observer.observe(root, { childList: true, subtree: true })
+        observed.add(root)
       }
-      for (const host of document.querySelectorAll('.settings-surface *')) {
-        const root = host.shadowRoot
-        if (!root || !root.querySelector('.settings-panel') || root.querySelector('[data-responsive-settings]')) continue
+    }
+    const installViewer = root => {
+      if (!root.querySelector('[data-responsive-demo]')) {
+        const style = document.createElement('style')
+        style.dataset.responsiveDemo = ''
+        style.textContent = responsiveViewerCss
+        root.append(style)
+      }
+      const logo = root.querySelector('.tb-logo')
+      if (logo && logo.getAttribute('href') !== import.meta.env.BASE_URL) logo.href = import.meta.env.BASE_URL
+      const topbar = root.querySelector('.topbar')
+      if (topbar) {
+        let target = topbar.querySelector('[data-ad4-topbar]')
+        if (!target) {
+          target = document.createElement('div')
+          target.className = 'ad4-topbar'
+          target.dataset.ad4Topbar = ''
+          topbar.insertBefore(target, topbar.querySelector('.tb-right'))
+        }
+        setToolbarTarget(current => current === target ? current : target)
+      }
+      const translations = {
+        'mode-prepare': 'Preparar', 'mode-preview': 'Vista previa',
+      }
+      Object.entries(translations).forEach(([id, label]) =>
+        setText(root.querySelector('[data-testid="' + id + '"]'), label))
+      const open = root.querySelector('[data-testid="open-file"] span')
+      if (open) setText(open, 'Abrir')
+      const project = root.querySelector('[data-testid="save-project"] span')
+      if (project && project.textContent === 'Save as 3mf') setText(project, 'Guardar 3MF')
+      const card = root.querySelector('.stats-card')
+      if (!card) return
+      let toggle = card.querySelector('.stats-toggle')
+      if (!toggle) {
+        toggle = document.createElement('button')
+        toggle.type = 'button'
+        toggle.className = 'stats-toggle'
+        toggle.setAttribute('aria-label', 'Mostrar u ocultar los datos completos de laminado')
+        const stack = document.createElement('span')
+        stack.className = 'stats-title-stack'
+        const heading = document.createElement('span')
+        heading.className = 'stats-heading'
+        const glance = document.createElement('span')
+        glance.className = 'stats-glance'
+        const chevron = document.createElement('span')
+        chevron.className = 'stats-chevron'
+        chevron.setAttribute('aria-hidden', 'true')
+        stack.append(heading, glance)
+        toggle.append(stack, chevron)
+        toggle.addEventListener('click', () => {
+          statsCollapsed.current = !statsCollapsed.current
+          card.classList.toggle('is-collapsed', statsCollapsed.current)
+          toggle.setAttribute('aria-expanded', String(!statsCollapsed.current))
+          setText(heading, statsCollapsed.current ? '✓ Laminado listo' : 'Datos de laminado')
+          setText(chevron, statsCollapsed.current ? '⌄' : '⌃')
+        })
+        card.prepend(toggle)
+      }
+      if (card.classList.contains('is-collapsed') !== statsCollapsed.current) {
+        card.classList.toggle('is-collapsed', statsCollapsed.current)
+      }
+      const heading = toggle.querySelector('.stats-heading')
+      const glance = toggle.querySelector('.stats-glance')
+      const chevron = toggle.querySelector('.stats-chevron')
+      const raw = Array.from(card.children).filter(node => node !== toggle)
+      const firstLine = raw[0]?.textContent || ''
+      const layers = firstLine.match(/(\d+)\s+layers/i)?.[1]
+      const filament = raw.map(node => node.textContent).join(' ').match(/Filament\s+([\d.,]+)\s*mm/i)?.[1]
+      const totalTime = card.querySelector('[data-testid="print-time"]')?.textContent.match(/(\d+h\s*\d+m)/i)?.[1]
+      const pieces = []
+      if (layers) pieces.push(layers + ' capas')
+      if (totalTime) pieces.push(totalTime.replace(/\s+/g, ' '))
+      if (filament) {
+        const metres = Number(filament.replace(',', '.')) / 1000
+        if (Number.isFinite(metres)) pieces.push(metres.toLocaleString('es-ES', { maximumFractionDigits: 2 }) + ' m')
+      }
+      setText(glance, pieces.join(' · ') || 'Toca para ver los datos')
+      setText(heading, statsCollapsed.current ? '✓ Laminado listo' : 'Datos de laminado')
+      setText(chevron, statsCollapsed.current ? '⌄' : '⌃')
+      toggle.setAttribute('aria-expanded', String(!statsCollapsed.current))
+      card.classList.toggle('has-warning', !!card.querySelector('.slice-warn'))
+    }
+    const installSettings = root => {
+      if (!root.querySelector('[data-responsive-settings]')) {
         const style = document.createElement('style')
         style.dataset.responsiveSettings = ''
         style.textContent = responsiveSettingsCss
         root.append(style)
       }
+      const search = root.querySelector('.sp-search')
+      if (search && search.placeholder !== 'Buscar ajustes por nombre o clave…') search.placeholder = 'Buscar ajustes por nombre o clave…'
+      setText(root.querySelector('.sp-builder > span'), 'Categoría')
+      const modes = { all: 'Todas', simple: 'Básico', advanced: 'Avanzado', expert: 'Experto', develop: 'Desarrollo' }
+      root.querySelectorAll('.sp-modes button').forEach(button => {
+        const original = button.dataset.mode || button.textContent
+        if (modes[original]) {
+          button.dataset.mode = original
+          setText(button, modes[original])
+        }
+      })
     }
-    const observer = new MutationObserver(install)
+    const install = () => {
+      const queue = [document.getElementById('root')]
+      while (queue.length) {
+        const container = queue.pop()
+        if (!container) continue
+        for (const host of container.querySelectorAll('*')) {
+          const root = host.shadowRoot
+          if (!root) continue
+          observe(root, observer)
+          if (root.querySelector('.app-shell')) installViewer(root)
+          if (root.querySelector('.settings-panel')) installSettings(root)
+          queue.push(root)
+        }
+      }
+    }
+    const observer = new MutationObserver(() => {
+      if (frame != null) return
+      frame = requestAnimationFrame(() => { frame = null; install() })
+    })
     install()
     observer.observe(document.getElementById('root'), { childList: true, subtree: true })
-    return () => { observer.disconnect(); setToolbarTarget(null) }
+    return () => {
+      observer.disconnect()
+      if (frame != null) cancelAnimationFrame(frame)
+      setToolbarTarget(null)
+    }
   }, [])
 
   useEffect(() => {
@@ -511,7 +596,7 @@ export default function Demo() {
   )
   const progressText = progress == null ? status : `Laminando… ${Math.round(progress * 100)}%`
 
-  return <main className={`demo-shell${previewVisible ? ' has-preview' : ''}`}>
+  return <main className={`demo-shell${previewVisible ? ' has-preview' : ''}${playbackExpanded ? ' playback-open' : ''}`}>
     <div className="viewport-host" ref={viewerHost}>
       <Viewport
         slicer={slicer}
@@ -587,8 +672,20 @@ export default function Demo() {
         : <button onClick={() => setSliceRequest(value => value + 1)} disabled={!objects}>Laminar</button>}
     </div>
 
-    {previewVisible && <section className="playback-dock" aria-label="Simulación del recorrido de impresión">
-      <div className="playback-heading"><strong>Recorrido de la boquilla</strong><span>Capa {preview.layer + 1} / {preview.count}</span></div>
+    {previewVisible && <section className={`playback-dock${playbackExpanded ? '': ' is-compact'}`} aria-label="Simulación del recorrido de impresión">
+      <div className="playback-heading">
+        <div className="playback-title"><strong>Recorrido de la boquilla</strong></div>
+        <div className="playback-heading-right">
+          <span>Capa {preview.layer + 1} / {preview.count}</span>
+          <button type="button" className="playback-expand" onClick={() => setPlaybackExpanded(value => !value)}
+            aria-label={playbackExpanded ? 'Contraer controles del recorrido' : 'Expandir controles del recorrido'}
+            aria-expanded={playbackExpanded} title={playbackExpanded ? 'Mostrar controles compactos' : 'Mostrar todos los controles'}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </button>
+        </div>
+      </div>
       <div className="playback-layer"><label htmlFor="preview-layer">Capas</label>
         <input id="preview-layer" type="range" min="1" max={preview.count} value={preview.layer + 1}
           onChange={event => selectLayer(Number(event.target.value) - 1)} aria-label="Seleccionar capa" />
@@ -596,11 +693,11 @@ export default function Demo() {
           onClick={() => selectLayer(preview.layer, !preview.single)} title="Mostrar solo esta capa">Solo capa</button>
       </div>
       <div className="playback-actions">
-        <button type="button" disabled={!preview.hasMoves} onClick={() => playPlayback(1)} aria-label="Reproducir recorrido" title="Reproducir">▶</button>
-        <button type="button" disabled={!preview.hasMoves} onClick={() => playPlayback(8)} aria-label="Avance rápido del recorrido" title="Avance rápido ×8">⏩</button>
-        <button type="button" disabled={!preview.hasMoves} onClick={pausePlayback} aria-label="Pausar recorrido" title="Pausar">Ⅱ</button>
-        <button type="button" disabled={!preview.hasMoves} onClick={stopPlayback} aria-label="Detener y volver al inicio" title="Detener y volver al inicio">■</button>
-        <label htmlFor="preview-move">Movimiento</label>
+        <button type="button" disabled={!preview.hasMoves} onClick={() => playPlayback(1)} aria-label="Reproducir recorrido" title="Reproducir" className="playback-primary">▶</button>
+        <button type="button" className="playback-extra" disabled={!preview.hasMoves} onClick={() => playPlayback(8)} aria-label="Avance rápido del recorrido" title="Avance rápido ×8">⏩</button>
+        <button type="button" className="playback-extra" disabled={!preview.hasMoves} onClick={pausePlayback} aria-label="Pausar recorrido" title="Pausar">Ⅱ</button>
+        <button type="button" className="playback-extra" disabled={!preview.hasMoves} onClick={stopPlayback} aria-label="Detener y volver al inicio" title="Detener y volver al inicio">■</button>
+        <label className="playback-extra" htmlFor="preview-move">Movimiento</label>
         <input id="preview-move" type="range" disabled={!preview.hasMoves} min="0" max={Math.max(1, preview.max)} value={Math.min(preview.move, Math.max(1, preview.max))}
           onChange={event => { pausePlayback(); scrubPreviewMove(viewerHost.current, Number(event.target.value)) }} aria-label="Explorar movimientos de la capa" />
         <span className="playback-count">{preview.hasMoves ? `${preview.move} / ${preview.max}` : 'Sin boquilla FFF'}</span>
@@ -620,7 +717,11 @@ export default function Demo() {
 
     {mobile && <>
       <nav className="mobile-nav" aria-label="Acciones rápidas">
-        <button className="nav-setting" onClick={() => setDrawer(true)}><span aria-hidden="true">☷</span>Ajustes</button>
+        <button className="nav-setting" type="button" title="Ajustes de laminado" aria-label="Abrir ajustes de laminado" onClick={() => setDrawer(true)}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+            <path d="M4 7h16M4 12h16M4 17h16" /><circle cx="9" cy="7" r="2" fill="#26313c"/><circle cx="15" cy="12" r="2" fill="#26313c"/><circle cx="8" cy="17" r="2" fill="#26313c"/>
+          </svg>
+        </button>
         <span className="nav-status" aria-live="polite">{progressText}</span>
         <label className="nav-auto"><input type="checkbox" role="switch" checked={autoSlice} onChange={event => setAutoSlice(event.target.checked)} /><span>Auto slice</span></label>
         {sliced ? <div className="nav-print-group" role="group" aria-label="Acciones de impresión">
@@ -631,7 +732,7 @@ export default function Demo() {
       {drawer && <div className="drawer-scrim" onClick={() => setDrawer(false)} />}
       <section className={`settings-drawer${drawer ? ' is-open' : ''}`} role="dialog" aria-modal="true" aria-label="Ajustes del laminado">
         <div className="drawer-handle" />
-        <header className="drawer-header"><div><strong>Ajustes del laminado</strong><small>Perfiles y opciones reales de Three Slicer</small></div>
+        <header className="drawer-header"><div><span className="drawer-kicker">Configuración de impresión</span><strong>Ajustes del laminado</strong><small>Perfiles, material y parámetros avanzados</small></div>
           <button className="close-drawer" onClick={() => setDrawer(false)} aria-label="Cerrar ajustes">×</button></header>
         <div className="profile-selects">
           <label>Proceso<select disabled={!machine || !catalog} value={settings.print_settings_id ?? ''} onChange={event => chooseProcess(event.target.value)}>
