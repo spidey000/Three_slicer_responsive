@@ -1,5 +1,7 @@
 # Local Adventurer 4 setup
 
+> **Worldwide remote access:** This document describes the local development bridge only. For private HTTPS access from outside your LAN using Cloudflare Tunnel and Access, follow [Secure remote deployment](REMOTE_ACCESS.md). The current bridge needs origin-side authentication and public-host support before it can be safely published.
+
 This guide installs **ThreeSlicer Responsive**, a browser slicer with an optional local bridge to the **FlashForge Adventurer 4**. The printer profile is fixed to the bundled **Flashforge Adventurer 4 Series 0.4 Nozzle** preset. Process and filament parameters remain editable. Confirm that your physical nozzle, bed, filament and printer match the selected settings.
 
 ## Requirements
