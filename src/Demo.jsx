@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Viewport, { useSlicer } from 'three-slicer-viewer'
 import SettingsPanel from 'three-slicer-viewer/components'
 import { makeSlicerWorker } from 'three-slicer/client'
@@ -75,6 +75,10 @@ export default function Demo() {
   const [status, setStatus] = useState('Abre o arrastra un modelo para empezar')
   const [progress, setProgress] = useState(null)
   const [machine, setMachine] = useState('')
+  const [cameraOpen, setCameraOpen] = useState(false)
+  const [testCapturedAt, setTestCapturedAt] = useState(() => new Date())
+  const cameraButton = useRef(null)
+  const cameraClose = useRef(null)
 
   useEffect(() => {
     const query = window.matchMedia('(max-width: 767px)')
@@ -129,6 +133,14 @@ export default function Demo() {
     return () => window.removeEventListener('keydown', close)
   }, [drawer])
 
+  useEffect(() => {
+    if (!cameraOpen) return
+    cameraClose.current?.focus()
+    const close = event => { if (event.key === 'Escape') setCameraOpen(false) }
+    window.addEventListener('keydown', close)
+    return () => { window.removeEventListener('keydown', close); cameraButton.current?.focus() }
+  }, [cameraOpen])
+
   const machineOptions = useMemo(() => Object.entries(printersByVendor)
     .sort(([a], [b]) => a.localeCompare(b))
     .flatMap(([vendor, entries]) => Object.keys(entries).sort().map(name => ({ vendor, name }))), [])
@@ -182,6 +194,7 @@ export default function Demo() {
             only={{ builder: 'TabFilament::add_filament_overrides_page' }} {...panelData} />
         </>}
         panels={panels}
+        features={cameraOpen ? { shortcuts: false } : undefined}
         sliceRequest={sliceRequest}
         onEvent={(event) => {
           if (event.type === 'progress') setProgress(event.value)
@@ -195,6 +208,25 @@ export default function Demo() {
         }}
       />
     </div>
+
+    <button ref={cameraButton} className="camera-trigger" type="button" title="Ver captura de la cámara de la impresora"
+      aria-label="Ver cámara de la impresora" onClick={() => setCameraOpen(true)}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M4 7h3l1.5-2h7L17 7h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z"/>
+        <circle cx="12" cy="13" r="3.5"/>
+      </svg>
+    </button>
+
+    {cameraOpen && <div className="camera-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setCameraOpen(false) }}>
+      <section className="camera-modal" role="dialog" aria-modal="true" aria-labelledby="camera-title">
+        <header className="camera-head"><div><span className="camera-eyebrow">VISTA DE CÁMARA · DEMO</span><h2 id="camera-title">Cámara de la impresora</h2></div>
+          <button ref={cameraClose} type="button" className="camera-close" onClick={() => setCameraOpen(false)} aria-label="Cerrar cámara">×</button></header>
+        <figure className="camera-frame"><img src={`${import.meta.env.BASE_URL}webcam-test.svg`} alt="Imagen de prueba simulando la webcam de una impresora 3D; contiene marca de agua IMAGEN DE PRUEBA" />
+          <figcaption>Imagen de prueba · Ninguna impresora conectada</figcaption></figure>
+        <footer className="camera-foot"><span>Captura simulada: {testCapturedAt.toLocaleString('es-ES')}</span>
+          <button type="button" onClick={() => setTestCapturedAt(new Date())}>Actualizar prueba</button></footer>
+      </section>
+    </div>}
 
     {mobile && <>
       <nav className="mobile-nav" aria-label="Acciones rápidas">
