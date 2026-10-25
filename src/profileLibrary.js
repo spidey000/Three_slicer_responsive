@@ -10,6 +10,11 @@ export const MAX_CUSTOM_PROFILES = 40
 
 export const emptyProfileLibrary = () => ({ process: [], filament: [] })
 
+export function browserProfileStorage() {
+  try { return typeof window === 'undefined' ? null : window.localStorage }
+  catch { return null }
+}
+
 const validType = type => type === 'process' || type === 'filament'
 const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value)
 const cleanName = name => typeof name === 'string' ? name.trim().replace(/\s+/g, ' ') : ''
