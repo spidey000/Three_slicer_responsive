@@ -135,10 +135,10 @@ A responsive slicer and printer-management web UI built on [Three Slicer](https:
 | Automatic re-slicing | Yes | Optional Auto slice; changing the model or settings invalidates previous generated G-code. |
 | Toolpath preview and simulated nozzle traversal | Yes | Layer and move scrubbing, play, fast-forward, pause and reset; simulated movement is **not** an accurate real-time print prediction. |
 | Project/model export | Yes | Native viewer export actions, including 3MF/STL where supported by the upstream package. |
-| Live printer status label | Local bridge only | Reads `ffadv4manager status --json` approximately every 8 seconds; no bridge on GitHub Pages. |
-| Camera still image | Local bridge only | Uses `ffadv4manager camera snapshot`. If unavailable, the UI clearly shows a demo placeholder, not a live feed. |
-| Upload sliced G-code to printer | Local bridge only | Invokes `ffadv4manager upload` and automatic G-code-to-GX wrapping. Requires a reachable printer. |
-| Upload and request print start | Local bridge only | Invokes `ffadv4manager upload ... --start`. Device state must be supervised. |
+| Live printer status label | Local bridge (remote mode pending) | Reads `ffadv4manager status --json` approximately every 8 seconds; no bridge on GitHub Pages. |
+| Camera still image | Local bridge (remote mode pending) | Uses `ffadv4manager camera snapshot`. If unavailable, the UI clearly shows a demo placeholder, not a live feed. |
+| Upload sliced G-code to printer | Local bridge (remote mode pending) | Invokes `ffadv4manager upload` and automatic G-code-to-GX wrapping. Requires a reachable printer. |
+| Upload and request print start | Local bridge (remote mode pending) | Invokes `ffadv4manager upload ... --start`. Device state must be supervised. |
 
 This is functional slicer integration, not a static mockup. The UI delegates geometry manipulation, slicing and G-code preview to `three-slicer-viewer@0.4.0` and `three-slicer@0.4.0` instead of recreating the underlying engine.
 
@@ -183,7 +183,7 @@ Phone / laptop anywhere (HTTPS)
 
 A Cloudflare-managed hostname and approved login are required. **No public inbound ports and no exposure of printer TCP 8899 or camera 8080.** Put `cloudflared` on the same host as the loopback backend; use one same-origin site for the web UI and `/api/printer/*`.
 
-**Installation path:** follow the [secure remote deployment guide](docs/REMOTE_ACCESS.md) or hand the [agent prompt at the top](#install-threeslicer-for-worldwide-printer-access--copy-this-prompt-into-your-ai-agent) to a coding agent. It includes the required backend changes, Cloudflare configuration, secure service installation, rejection tests and external-network verification. An automated agent must not claim the remote setup is finished until those checks pass.
+**Installation path:** follow the [secure remote deployment guide](docs/REMOTE_ACCESS.md) or hand the **agent prompt at the very top of this README** to a coding agent. It includes the required backend changes, Cloudflare configuration, secure service installation, rejection tests and external-network verification. An automated agent must not claim the remote setup is finished until those checks pass.
 
 ### Local-only installation (development / initial checks)
 
@@ -248,11 +248,11 @@ Local browser URL: **http://127.0.0.1:8765/Three_slicer_responsive/**. This URL 
 
 The CLI has broader capabilities than this web UI. For details, flags and precise safety conditions, consult the [full FFAD4Manager command reference](https://github.com/spidey000/FFAD4Manager/blob/main/docs/CLI.md).
 
-**Printer Manager:** tap the top-right AD4 status pill. The management screen reflects real CLI results only; GitHub Pages has no printer API. [Functionality and safety notes](docs/PRINTER_MANAGER.md).
+**Printer Manager:** tap the top-right AD4 status pill. The management screen reflects real CLI results through the local bridge; in the future the **same UI** can be used from anywhere through the protected production hostname once remote authentication is implemented and deployed. GitHub Pages has no printer API. [Functionality and safety notes](docs/PRINTER_MANAGER.md).
 
-## Local printer workflow
+## Printer workflow (local now; remotely after secure deployment)
 
-1. On the local server, confirm `ffadv4manager status --json` works and the printer is ready. Check the nozzle, bed, material, filament and printer-side conditions yourself.
+1. On the local host, confirm `ffadv4manager status --json` works and the printer is ready. Check the nozzle, bed, material, filament and printer-side conditions yourself.
 2. Import a 3D file and adjust process/filament parameters. Select **Slice** or enable **Auto slice**.
 3. Review the toolpath preview, estimated time, layers, and generated output. The preview simulation does not control the physical printer.
 4. Choose **Upload only** to invoke the CLI without its explicit start flag, or **Print** to request an upload followed by a start. Both actions contact real hardware; supervise the printer.
