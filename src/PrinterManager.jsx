@@ -215,3 +215,4 @@ export default function PrinterManager({ onClose }) {
       </div>
     </div>
   </div>
+}
