@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
+    "local": "python3 server/ad4_bridge.py",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0"
   },

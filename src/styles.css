@@ -22,6 +22,15 @@ html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; }
   --vp-dark-control: #242a32; --vp-dark-control-hover: #303843;
 }
 .viewport-host { position: absolute; inset: 0; overflow: hidden; }
+.ad4-controls { position: absolute; z-index: 16; top: 52px; right: 12px; display: flex; align-items: center;
+  gap: 8px; padding: 7px 9px; background: #1c2128ed; border: 1px solid #46515d; border-radius: 9px;
+  box-shadow: 0 6px 20px #0008; font-size: 11px; }
+.ad4-controls label { white-space: nowrap; color: #c5d0d8; }
+.ad4-controls input { accent-color: #a7e43d; vertical-align: middle; }
+.ad4-controls button { border: 0; border-radius: 6px; background: #a7e43d; color: #17200d; padding: 6px 9px; font-weight: 700; cursor: pointer; }
+.ad4-controls button:disabled { opacity: .45; cursor: default; }
+.ad4-print { display: flex; gap: 4px; }
+.ad4-print button + button { background: #303944; color: #eef2f4; border: 1px solid #4c5762; }
 .demo-shell.has-preview { --demo-preview-bottom: 112px; }
 .playback-dock { position: absolute; z-index: 13; inset: auto 0 0; height: 112px; padding: 12px 20px;
   display: flex; flex-direction: column; gap: 7px; background: #1c2128; border-top: 1px solid #47515c;
@@ -60,6 +69,9 @@ button:focus-visible, select:focus-visible { outline: 2px solid #a7e43d; outline
 .camera-foot button { border: 1px solid #648736; border-radius: 8px; background: #a7e43d; color: #17200d; padding: 8px 12px; font: 700 12px/1.2 system-ui,sans-serif; cursor: pointer; }
 
 @media (max-width: 767px) {
+  .ad4-controls { top: 90px; right: 5px; left: 46px; justify-content: flex-end; gap: 6px; flex-wrap: wrap; }
+  .ad4-controls > span { margin-right: auto; }
+  .ad4-controls button { font-size: 11px; }
   .demo-shell.has-preview { --demo-preview-bottom: 211px; }
   .playback-dock { bottom: 88px; height: 123px; padding: 8px 10px; gap: 6px; font-size: 11px; }
   .playback-heading, .playback-layer, .playback-actions { gap: 6px; }
@@ -100,7 +112,6 @@ button:focus-visible, select:focus-visible { outline: 2px solid #a7e43d; outline
   .close-drawer { flex: 0 0 36px; width: 36px; height: 36px; border: 1px solid #373e48; border-radius: 8px; background: #232730; color: #f3f4f6; font-size: 22px; line-height: 1; }
   .profile-selects { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
   .profile-selects label { display: flex; flex-direction: column; min-width: 0; gap: 4px; color: #aeb7c2; font-size: 11px; }
-  .profile-selects label:first-child { grid-column: 1 / -1; }
   .profile-selects select { width: 100%; min-width: 0; height: 36px; padding: 0 8px; color: #edf0f3; background: #242932; border: 1px solid #3a424d; border-radius: 7px; font-family: inherit; font-size: 11px; }
   .profile-selects select:disabled { opacity: .55; }
   .settings-surface { flex: 1 1 auto; min-height: 0; overflow: hidden; border: 1px solid #333a44; border-radius: 10px; background: #222730; }
@@ -109,13 +120,11 @@ button:focus-visible, select:focus-visible { outline: 2px solid #a7e43d; outline
 @media (max-width: 380px) {
   .mobile-nav { gap: 6px; padding-inline: 8px; }
   .profile-selects { grid-template-columns: 1fr; gap: 6px; }
-  .profile-selects label:first-child { grid-column: auto; }
   .profile-selects select { height: 32px; }
   .settings-drawer { height: 90dvh; }
 }
 @media (max-height: 600px) and (max-width: 767px) {
   .settings-drawer { height: 93dvh; }
   .profile-selects { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .profile-selects label:first-child { grid-column: auto; }
 }
 @media (prefers-reduced-motion: reduce) { .settings-drawer { transition: none; } }

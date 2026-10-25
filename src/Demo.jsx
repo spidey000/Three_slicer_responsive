@@ -3,7 +3,7 @@ import Viewport, { useSlicer } from 'three-slicer-viewer'
 import SettingsPanel from 'three-slicer-viewer/components'
 import { makeSlicerWorker } from 'three-slicer/client'
 import {
-  bundledCatalog, printersByVendor, printerSettings, printerKeys, printerDefaultPreset,
+  bundledCatalog, printerSettings, printerKeys, printerDefaultPreset,
   processPresets, filamentPresets,
 } from 'three-slicer/settings'
 import { schema, uiTree } from 'three-slicer/data'
@@ -14,6 +14,11 @@ import { fullPreviewLayer, getPreviewControls, previewMoveCount, scrubPreviewMov
 // Keep this hook adapter at module scope: three-slicer-viewer calls it as a hook.
 const slicer = (deps) => useSlicer({ ...deps, makeWorker: makeSlicerWorker })
 const panelData = { schema, uiTree, toggle: { makeCfg, disabledKeys } }
+const AD4 = 'Flashforge Adventurer 4 Series 0.4 Nozzle'
+const ad4Catalog = { ...bundledCatalog,
+  printersByVendor: { Flashforge: { [AD4]: bundledCatalog.printersByVendor.Flashforge[AD4] } },
+  printerTechByVendor: { Flashforge: { [AD4]: 'FFF' } },
+}
 const responsiveViewerCss = `
 .app-body { padding-bottom: var(--demo-preview-bottom, 0px); }
 .stats-card { left: 60px; }
@@ -69,7 +74,7 @@ function applyPreset(base, preset, keys, idKey, name) {
 }
 
 export default function Demo() {
-  const [settings, setSettings] = useState({})
+  const [settings, setSettings] = useState(() => ({ ...printerSettings(AD4), printer_settings_id: AD4 }))
   const [plateSettings, setPlateSettings] = useState({})
   const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 767px)').matches)
   const [drawer, setDrawer] = useState(false)
@@ -77,7 +82,13 @@ export default function Demo() {
   const [catalog, setCatalog] = useState(null)
   const [status, setStatus] = useState('Abre o arrastra un modelo para empezar')
   const [progress, setProgress] = useState(null)
-  const [machine, setMachine] = useState('')
+  const machine = AD4
+  const [autoSlice, setAutoSlice] = useState(false)
+  const [objects, setObjects] = useState(0)
+  const [sliced, setSliced] = useState(null)
+  const [sending, setSending] = useState(false)
+  const [printerState, setPrinterState] = useState('Sin conexión')
+  const [cameraSrc, setCameraSrc] = useState(null)
   const [cameraOpen, setCameraOpen] = useState(false)
   const [testCapturedAt, setTestCapturedAt] = useState(() => new Date())
   const cameraButton = useRef(null)
@@ -88,6 +99,49 @@ export default function Demo() {
   const playback = useRef({ layer: 0, move: 0, last: 0, remainder: 0, speed: 1, count: 0, waiting: false })
   const [preview, setPreview] = useState({ mode: 'prepare', count: 0, layer: 0, move: 0, max: 0, single: false, playing: false, speed: 1, hasMoves: false, plate: 0 })
   const previewVisible = preview.mode === 'preview' && preview.count > 0
+
+  useEffect(() => {
+    if (!catalog) return
+    const preset = printerDefaultPreset(AD4)
+    const filament = catalog.filament.recommendedFor(AD4)[0] || catalog.filament.listFor(AD4)[0]
+    setSettings(current => {
+      let next = preset ? applyPreset(current, catalog.process.settingsFor(preset), catalog.process.keys, 'print_settings_id', preset) : current
+      if (filament) next = applyPreset(next, catalog.filament.settingsFor(filament), catalog.filament.keys, 'filament_settings_id', filament)
+      return next
+    })
+  }, [catalog])
+  useEffect(() => { setSliced(null) }, [settings, plateSettings, objects])
+  useEffect(() => {
+    if (!autoSlice || !objects || sliced) return
+    const timer = setTimeout(() => setSliceRequest(value => value + 1), 650)
+    return () => clearTimeout(timer)
+  }, [autoSlice, objects, settings, plateSettings, sliced])
+  useEffect(() => {
+    const refresh = () => fetch('/api/printer/status').then(r => r.json()).then(data =>
+      setPrinterState(data.machine_status ?? data.status ?? 'Conectada')).catch(() => setPrinterState('Sin conexión'))
+    refresh()
+    const timer = setInterval(refresh, 8000)
+    return () => clearInterval(timer)
+  }, [])
+  useEffect(() => {
+    if (!cameraOpen) return
+    fetch('/api/printer/camera').then(r => { if (!r.ok) throw Error(); return r.blob() }).then(blob => setCameraSrc(URL.createObjectURL(blob))).catch(() => setCameraSrc(null))
+    return () => setCameraSrc(current => { if (current) URL.revokeObjectURL(current); return null })
+  }, [cameraOpen])
+
+  const sendPrint = async (start) => {
+    if (!sliced || sending) return
+    setSending(true)
+    try {
+      const response = await fetch(`/api/printer/jobs?start=${start ? 'true' : 'false'}`, {
+        method: 'POST', headers: { 'Content-Type': 'text/plain; charset=utf-8' }, body: sliced.gcode,
+      })
+      const result = await response.json()
+      if (!response.ok) throw Error(result.error || 'No se pudo enviar el trabajo')
+      setStatus(start ? `Imprimiendo · ${result.remote_name}` : `Enviado · ${result.remote_name}`)
+    } catch (error) { setStatus(`Error de impresión: ${error.message}`) }
+    finally { setSending(false) }
+  }
 
   const pausePlayback = () => {
     if (animation.current != null) cancelAnimationFrame(animation.current)
@@ -257,9 +311,6 @@ export default function Demo() {
     return () => { window.removeEventListener('keydown', close); cameraButton.current?.focus() }
   }, [cameraOpen])
 
-  const machineOptions = useMemo(() => Object.entries(printersByVendor)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .flatMap(([vendor, entries]) => Object.keys(entries).sort().map(name => ({ vendor, name }))), [])
   const processOptions = useMemo(() => catalog && machine ? catalog.process.listFor(machine) : [], [catalog, machine])
   const filamentOptions = useMemo(() => {
     if (!catalog || !machine) return []
@@ -267,16 +318,6 @@ export default function Demo() {
     return recommended.length ? recommended : catalog.filament.listFor(machine)
   }, [catalog, machine])
 
-  const chooseMachine = (name) => {
-    setMachine(name)
-    if (!name) return
-    const recommended = printerDefaultPreset(name)
-    setSettings(current => {
-      let next = applyPreset(current, printerSettings(name), printerKeys, 'printer_settings_id', name)
-      if (catalog && recommended) next = applyPreset(next, catalog.process.settingsFor(recommended), catalog.process.keys, 'print_settings_id', recommended)
-      return next
-    })
-  }
   const chooseProcess = (name) => {
     if (catalog && name) setSettings(current => applyPreset(current, catalog.process.settingsFor(name), catalog.process.keys, 'print_settings_id', name))
   }
@@ -286,8 +327,8 @@ export default function Demo() {
 
   // Keep the native preview controls mounted in the hidden mobile sidebar: the
   // dock below drives those same inputs, so Three Slicer's GPU toolpath and nozzle stay authoritative.
-  const panels = mobile ? { printerCard: false, filamentCard: false, objectList: false,
-    processCard: false, sliceBar: false, towerCard: false, resinCard: false } : undefined
+  const panels = { printerCard: false, sliceBar: false, ...(mobile ? { filamentCard: false, objectList: false,
+    processCard: false, towerCard: false, resinCard: false } : {}) }
   const processPanel = (panelSettings, setPanelSettings, meta) => (
     <SettingsPanel embedded settings={panelSettings} setSettings={setPanelSettings}
       overriddenKeys={meta?.overriddenKeys} onRevertKey={meta?.onRevertKey} {...panelData} />
@@ -298,7 +339,7 @@ export default function Demo() {
     <div className="viewport-host" ref={viewerHost}>
       <Viewport
         slicer={slicer}
-        catalog={bundledCatalog}
+        catalog={ad4Catalog}
         settings={settings}
         setSettings={setSettings}
         plateSettings={plateSettings}
@@ -321,6 +362,7 @@ export default function Demo() {
           if (event.type === 'slicing' && event.value) pausePlayback()
           if (event.type === 'error') { setProgress(null); setStatus(`Error: ${event.value}`) }
           if (event.type === 'notice') setStatus(event.value)
+          if (event.type === 'objects') setObjects(event.value.length)
           if (event.type === 'canvasMode') {
             if (event.value !== 'preview') pausePlayback()
             setPreview(current => ({ ...current, mode: event.value }))
@@ -337,14 +379,23 @@ export default function Demo() {
           if (event.type === 'moveScrub' && animation.current == null) setPreview(current => ({ ...current, move: event.value.at, max: event.value.max }))
           if (event.type === 'selectedPlate') { pausePlayback(); manualSelection.current = false; setPreview(current => ({ ...current, plate: event.value, layer: 0, move: 0 })) }
         }}
-        onSliced={({ stats }) => {
+        onSliced={({ stats, gcode }) => {
           pausePlayback()
           manualSelection.current = false
           setProgress(null)
           setStatus(`Laminado listo · ${stats?.layers ?? '—'} capas`)
+          setSliced({ gcode })
           requestAnimationFrame(() => setPreview(current => ({ ...current, hasMoves: Boolean(getPreviewControls(viewerHost.current)?.move) })))
         }}
       />
+    </div>
+
+    <div className="ad4-controls">
+      <span>Adventurer 4 · {printerState}</span>
+      <label><input type="checkbox" checked={autoSlice} onChange={event => setAutoSlice(event.target.checked)} /> Auto slice</label>
+      {sliced ? <div className="ad4-print"><button disabled={sending} onClick={() => sendPrint(true)}>{sending ? 'Enviando…' : 'Imprimir'}</button>
+        <button disabled={sending} onClick={() => sendPrint(false)} title="Enviar sin iniciar impresión">▾ Solo enviar</button></div>
+        : <button onClick={() => setSliceRequest(value => value + 1)} disabled={!objects}>Laminar</button>}
     </div>
 
     {previewVisible && <section className="playback-dock" aria-label="Simulación del recorrido de impresión">
@@ -379,8 +430,8 @@ export default function Demo() {
       <section className="camera-modal" role="dialog" aria-modal="true" aria-labelledby="camera-title">
         <header className="camera-head"><div><span className="camera-eyebrow">VISTA DE CÁMARA · DEMO</span><h2 id="camera-title">Cámara de la impresora</h2></div>
           <button ref={cameraClose} type="button" className="camera-close" onClick={() => setCameraOpen(false)} aria-label="Cerrar cámara">×</button></header>
-        <figure className="camera-frame"><img src={`${import.meta.env.BASE_URL}webcam-test.svg`} alt="Imagen de prueba simulando la webcam de una impresora 3D; contiene marca de agua IMAGEN DE PRUEBA" />
-          <figcaption>Imagen de prueba · Ninguna impresora conectada</figcaption></figure>
+        <figure className="camera-frame"><img src={cameraSrc || `${import.meta.env.BASE_URL}webcam-test.svg`} alt={cameraSrc ? 'Captura de la Adventurer 4' : 'Imagen de prueba de impresora 3D'} />
+          <figcaption>{cameraSrc ? 'Captura actual de la Adventurer 4' : 'Imagen de prueba · Sin conexión'}</figcaption></figure>
         <footer className="camera-foot"><span>Captura simulada: {testCapturedAt.toLocaleString('es-ES')}</span>
           <button type="button" onClick={() => setTestCapturedAt(new Date())}>Actualizar prueba</button></footer>
       </section>
@@ -390,7 +441,7 @@ export default function Demo() {
       <nav className="mobile-nav" aria-label="Acciones rápidas">
         <button className="nav-setting" onClick={() => setDrawer(true)}><span aria-hidden="true">☷</span>Ajustes</button>
         <span className="nav-status" aria-live="polite">{progressText}</span>
-        <button className="nav-slice" onClick={() => setSliceRequest(value => value + 1)}><span aria-hidden="true">▶</span>Laminar</button>
+        <button className="nav-slice" disabled={!sliced && !objects} onClick={() => sliced ? sendPrint(true) : setSliceRequest(value => value + 1)}><span aria-hidden="true">▶</span>{sliced ? 'Imprimir' : 'Laminar'}</button>
       </nav>
       {drawer && <div className="drawer-scrim" onClick={() => setDrawer(false)} />}
       <section className={`settings-drawer${drawer ? ' is-open' : ''}`} role="dialog" aria-modal="true" aria-label="Ajustes del laminado">
@@ -398,10 +449,6 @@ export default function Demo() {
         <header className="drawer-header"><div><strong>Ajustes del laminado</strong><small>Perfiles y opciones reales de Three Slicer</small></div>
           <button className="close-drawer" onClick={() => setDrawer(false)} aria-label="Cerrar ajustes">×</button></header>
         <div className="profile-selects">
-          <label>Impresora<select value={machine} onChange={event => chooseMachine(event.target.value)}>
-            <option value="">Selecciona una impresora</option>
-            {machineOptions.map(option => <option key={option.name} value={option.name}>{option.vendor} · {option.name}</option>)}
-          </select></label>
           <label>Proceso<select disabled={!machine || !catalog} value={settings.print_settings_id ?? ''} onChange={event => chooseProcess(event.target.value)}>
             <option value="">Perfil de proceso</option>{processOptions.map(name => <option key={name} value={name}>{name}</option>)}
           </select></label>
@@ -410,7 +457,7 @@ export default function Demo() {
           </select></label>
         </div>
         <div className="settings-surface"><SettingsPanel embedded settings={settings} setSettings={setSettings} {...panelData} /></div>
-        <button className="drawer-slice" onClick={() => { setDrawer(false); setSliceRequest(value => value + 1) }}>Laminar modelo</button>
+        <button className="drawer-slice" onClick={() => { setDrawer(false); sliced ? sendPrint(true) : setSliceRequest(value => value + 1) }}>{sliced ? 'Imprimir' : 'Laminar modelo'}</button>
       </section>
     </>}
   </main>
