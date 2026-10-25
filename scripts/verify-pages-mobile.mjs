@@ -70,6 +70,40 @@ async function checkWidth(width) {
       }
     })
     await page.screenshot({ path: `${output}/mobile-${width}.png`, fullPage: true })
+    const english = await page.evaluate(() => {
+      const find = node => {
+        const matching = node.querySelector?.('.empty-hint')
+        if (matching) return matching
+        for (const element of node.querySelectorAll?.('*') || []) {
+          if (element.shadowRoot) {
+            const result = find(element.shadowRoot)
+            if (result) return result
+          }
+        }
+        return null
+      }
+      const card = find(document)
+      return {
+        lang: document.documentElement.lang,
+        title: card?.querySelector('.eh-title')?.textContent?.trim(),
+        button: card?.querySelector('.eh-btn')?.textContent?.trim(),
+      }
+    })
+    if (english.lang !== 'en' || english.title !== 'Your next project starts here' || english.button !== 'Open 3D model') {
+      throw new Error(`English UI regression at ${width}px: ${JSON.stringify(english)}`)
+    }
+    if (width === 390) {
+      await page.locator('.nav-setting').click()
+      await page.waitForTimeout(150)
+      const modal = page.locator('.settings-drawer')
+      const modalContent = await modal.textContent()
+      if (!modalContent.includes('Slicing settings') || !modalContent.includes('Print configuration')) {
+        throw new Error('Mobile settings panel is not in English')
+      }
+      await page.screenshot({ path: `${output}/settings-mobile-${width}.png`, fullPage: true })
+      await page.locator('.close-drawer').click()
+    }
+
     const tolerance = 2
     const bounds = [geometry.card, geometry.button].filter(Boolean)
     for (const rect of bounds) {
