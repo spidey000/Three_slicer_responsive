@@ -16,6 +16,7 @@ const slicer = (deps) => useSlicer({ ...deps, makeWorker: makeSlicerWorker })
 const panelData = { schema, uiTree, toggle: { makeCfg, disabledKeys } }
 const responsiveViewerCss = `
 .app-body { padding-bottom: var(--demo-preview-bottom, 0px); }
+.stats-card { left: 60px; }
 @media (max-width: 767px) {
   .app-shell { font-size: 12px; }
   .topbar { flex: 0 0 86px; height: 86px; display: grid; grid-template-columns: minmax(0,1fr) auto;
