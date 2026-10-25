@@ -83,6 +83,7 @@ export default function Demo() {
   const cameraClose = useRef(null)
   const viewerHost = useRef(null)
   const animation = useRef(null)
+  const manualSelection = useRef(false)
   const playback = useRef({ layer: 0, move: 0, last: 0, remainder: 0, speed: 1, count: 0, waiting: false })
   const [preview, setPreview] = useState({ mode: 'prepare', count: 0, layer: 0, move: 0, max: 0, single: false, playing: false, speed: 1 })
   const previewVisible = preview.mode === 'preview' && preview.count > 0
@@ -97,6 +98,7 @@ export default function Demo() {
 
   const selectLayer = (layer, single = preview.single) => {
     pausePlayback()
+    manualSelection.current = true
     const index = Math.min(Math.max(0, Number(layer) || 0), Math.max(0, preview.count - 1))
     if (!selectPreviewLayer(viewerHost.current, index, single)) return
     fullPreviewLayer(viewerHost.current)
@@ -108,6 +110,7 @@ export default function Demo() {
 
   const stopPlayback = () => {
     pausePlayback()
+    manualSelection.current = true
     if (selectPreviewLayer(viewerHost.current, 0, false)) {
       // A new layer is rendered by React after this event; the next frame starts at move zero.
       requestAnimationFrame(() => scrubPreviewMove(viewerHost.current, 0))
@@ -123,8 +126,8 @@ export default function Demo() {
     if (animation.current != null) cancelAnimationFrame(animation.current)
     const state = playback.current
     state.count = preview.count
-    state.layer = preview.layer
-    state.move = preview.move
+    state.layer = manualSelection.current ? preview.layer : 0
+    state.move = manualSelection.current ? preview.move : 0
     state.speed = speed
     state.last = 0
     state.lastUi = 0
@@ -136,6 +139,7 @@ export default function Demo() {
       state.move = 0
     }
     selectPreviewLayer(viewerHost.current, state.layer, false)
+    manualSelection.current = true
     setPreview(current => ({ ...current, layer: state.layer, single: false, playing: true, speed }))
 
     const tick = timestamp => {
@@ -300,6 +304,7 @@ export default function Demo() {
         onEvent={(event) => {
           if (event.type === 'progress') setProgress(event.value)
           if (event.type === 'slicing' && !event.value) setProgress(null)
+          if (event.type === 'slicing' && event.value) pausePlayback()
           if (event.type === 'error') { setProgress(null); setStatus(`Error: ${event.value}`) }
           if (event.type === 'notice') setStatus(event.value)
           if (event.type === 'canvasMode') {
@@ -308,6 +313,7 @@ export default function Demo() {
           }
           if (event.type === 'layerCount') {
             pausePlayback()
+            manualSelection.current = false
             setPreview(current => ({ ...current, count: event.value, layer: Math.min(current.layer, Math.max(0, event.value - 1)) }))
           }
           if (event.type === 'layerRange') {
@@ -315,9 +321,11 @@ export default function Demo() {
             requestAnimationFrame(() => setPreview(current => ({ ...current, max: previewMoveCount(viewerHost.current) })))
           }
           if (event.type === 'moveScrub' && animation.current == null) setPreview(current => ({ ...current, move: event.value.at, max: event.value.max }))
-          if (event.type === 'selectedPlate') { pausePlayback(); setPreview(current => ({ ...current, layer: 0, move: 0 })) }
+          if (event.type === 'selectedPlate') { pausePlayback(); manualSelection.current = false; setPreview(current => ({ ...current, layer: 0, move: 0 })) }
         }}
         onSliced={({ stats }) => {
+          pausePlayback()
+          manualSelection.current = false
           setProgress(null)
           setStatus(`Laminado listo · ${stats?.layers ?? '—'} capas`)
         }}
