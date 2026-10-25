@@ -966,8 +966,7 @@ export default function Demo() {
       </section>
     </div>}
 
-    {mobile && <>
-      <nav className="mobile-nav" aria-label="Quick actions">
+    {mobile ? <nav className="mobile-nav" aria-label="Quick actions">
         <button className="nav-setting" type="button" title="Slicing settings" aria-label="Open slicing settings" onClick={() => setDrawer(true)}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
             <path d="M4 7h16M4 12h16M4 17h16" /><circle cx="9" cy="7" r="2" fill="#26313c"/><circle cx="15" cy="12" r="2" fill="#26313c"/><circle cx="8" cy="17" r="2" fill="#26313c"/>
@@ -979,23 +978,71 @@ export default function Demo() {
           <button className="nav-slice" disabled={sending} onClick={() => sendPrint(true)}>{sending ? 'Sending…' : 'Print'}</button>
           <button className="nav-send" disabled={sending} onClick={() => sendPrint(false)}>Upload only</button>
         </div> : <button className="nav-slice" disabled={!objects} onClick={() => setSliceRequest(value => value + 1)}>Slice</button>}
-      </nav>
-      {drawer && <div className="drawer-scrim" onClick={() => setDrawer(false)} />}
+      </nav> : <button type="button" className="desktop-profile-launcher" onClick={() => setDrawer(true)}
+        aria-label="Open custom process and filament profiles">Presets &amp; settings</button>}
+      {drawer && <div className="drawer-scrim" onClick={() => { if (!saveDialog) setDrawer(false) }} />}
       <section className={`settings-drawer${drawer ? ' is-open' : ''}`} role="dialog" aria-modal="true" aria-label="Slicing settings">
         <div className="drawer-handle" />
         <header className="drawer-header"><div><span className="drawer-kicker">Print configuration</span><strong>Slicing settings</strong><small>Presets, material and advanced parameters</small></div>
           <button className="close-drawer" onClick={() => setDrawer(false)} aria-label="Close settings">×</button></header>
         <div className="profile-selects">
-          <label>Process<select disabled={!machine || !catalog} value={settings.print_settings_id ?? ''} onChange={event => chooseProcess(event.target.value)}>
-            <option value="">Process preset</option>{processOptions.map(name => <option key={name} value={name}>{name}</option>)}
-          </select></label>
-          <label>Material<select disabled={!machine || !catalog} value={settings.filament_settings_id ?? ''} onChange={event => chooseFilament(event.target.value)}>
-            <option value="">Material preset</option>{filamentOptions.map(item => <option key={item.name} value={item.name}>{item.name}</option>)}
-          </select></label>
+          <div className="profile-picker">
+            <label htmlFor="ad4-process-select">Process</label>
+            <select id="ad4-process-select" disabled={!machine || !catalog} value={settings.print_settings_id ?? ''} onChange={event => chooseProcess(event.target.value)}>
+              <option value="">Process preset</option>
+              <optgroup label="Built-in and compatible">
+                {processOptions.filter(name => !profileLibrary.process.some(p => p.name === name)).map(name => <option key={name} value={name}>{name}</option>)}
+              </optgroup>
+              {profileLibrary.process.length > 0 && <optgroup label="My saved processes">
+                {profileLibrary.process.map(item => <option key={item.name} value={item.name}>{item.name}</option>)}
+              </optgroup>}
+              <option value={SAVE_PROCESS_OPTION}>＋ Save current settings as new profile…</option>
+            </select>
+            {profileLibrary.process.some(p => p.name === settings.print_settings_id) && <div className="profile-quick-actions">
+              <button type="button" onClick={() => updateSavedProfile('process')}>Update saved</button>
+              <button type="button" className="profile-delete" onClick={() => deleteSavedProfile('process')}>Delete</button>
+            </div>}
+          </div>
+          <div className="profile-picker">
+            <label htmlFor="ad4-material-select">Material</label>
+            <select id="ad4-material-select" disabled={!machine || !catalog} value={settings.filament_settings_id ?? ''} onChange={event => chooseFilament(event.target.value)}>
+              <option value="">Material preset</option>
+              <optgroup label="Built-in materials">
+                {filamentOptions.filter(item => !profileLibrary.filament.some(p => p.name === item.name)).map(item =>
+                  <option key={item.name} value={item.name}>{item.name}</option>)}
+              </optgroup>
+              {profileLibrary.filament.length > 0 && <optgroup label="My saved filaments">
+                {profileLibrary.filament.map(item => <option key={item.name} value={item.name}>{item.name}</option>)}
+              </optgroup>}
+              <option value={SAVE_FILAMENT_OPTION}>＋ Save current material as new profile…</option>
+            </select>
+            {profileLibrary.filament.some(p => p.name === settings.filament_settings_id) && <div className="profile-quick-actions">
+              <button type="button" onClick={() => updateSavedProfile('filament')}>Update saved</button>
+              <button type="button" className="profile-delete" onClick={() => deleteSavedProfile('filament')}>Delete</button>
+            </div>}
+          </div>
         </div>
+        {profileNotice && <p className="profile-notice" role="status">{profileNotice}</p>}
         <div className="settings-surface"><SettingsPanel embedded settings={settings} setSettings={setSettings} {...panelData} /></div>
         <button className="drawer-slice" onClick={() => { setDrawer(false); sliced ? sendPrint(true) : setSliceRequest(value => value + 1) }}>{sliced ? 'Print' : 'Slice model'}</button>
       </section>
-    </>}
+      {saveDialog && <div className="profile-save-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setSaveDialog(null) }}>
+        <form className="profile-save-dialog" role="dialog" aria-modal="true" aria-labelledby="profile-save-title" onSubmit={saveCurrentProfile}>
+          <span className="profile-save-eyebrow">My presets</span>
+          <h2 id="profile-save-title">Save new {saveDialog === 'process' ? 'process' : 'filament'} profile</h2>
+          <p>Save a separate copy of your current {saveDialog === 'process' ? 'print settings' : 'material settings'}.
+            Existing profiles will not change.</p>
+          <label htmlFor="new-profile-name">Profile name</label>
+          <input ref={profileNameRef} id="new-profile-name" value={profileName} onChange={event => { setProfileName(event.target.value); setProfileError('') }}
+            maxLength={80} required aria-invalid={!!profileError} aria-describedby={profileError ? 'profile-save-error' : undefined}
+            placeholder={saveDialog === 'process' ? 'e.g. My detailed 0.2 mm' : 'e.g. Artillery PLA – White'} />
+          {profileError && <p className="profile-save-error" id="profile-save-error" role="alert">{profileError}</p>}
+          <p className="profile-save-note">Saved locally in this browser. Clear site data or use another device and these profiles will not be available there.</p>
+          <div className="profile-save-actions">
+            <button type="button" className="profile-cancel" onClick={() => setSaveDialog(null)}>Cancel</button>
+            <button type="submit" className="profile-confirm">Save profile</button>
+          </div>
+        </form>
+      </div>}
   </main>
 }
