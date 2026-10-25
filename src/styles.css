@@ -8,7 +8,19 @@
 }
 * { box-sizing: border-box; }
 html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; }
-.demo-shell { position: relative; width: 100%; height: 100dvh; min-height: 480px; background: #101216; }
+.demo-shell {
+  position: relative; width: 100%; height: 100dvh; min-height: 480px; background: #101216; color-scheme: dark;
+  --vp-accent: #a7e43d; --vp-accent-rgb: 167, 228, 61; --vp-accent-hover: #b9f064;
+  --vp-accent-ink: #a7e43d; --vp-accent-on-dark: #c3f37c;
+  --vp-accent-soft: #283321; --vp-accent-soft-border: #557934; --vp-on-accent: #17200d;
+  --vp-light-bg: #181c22; --vp-light-surface: #222730; --vp-light-subtle: #2a3039;
+  --vp-light-control: #343c47; --vp-light-control-hover: #424b57;
+  --vp-light-border: #3b4450; --vp-light-divider: #353e49;
+  --vp-light-text: #eff3f6; --vp-light-text-muted: #b4bec8; --vp-light-text-faint: #909ba7;
+  --vp-dark-base: #111318; --vp-dark-base-rgb: 17, 19, 24;
+  --vp-dark-surface: #191d23; --vp-dark-surface-rgb: 25, 29, 35;
+  --vp-dark-control: #242a32; --vp-dark-control-hover: #303843;
+}
 .viewport-host { position: absolute; inset: 0; overflow: hidden; }
 .mobile-nav, .settings-drawer, .drawer-scrim { display: none; }
 button:focus-visible, select:focus-visible { outline: 2px solid #a7e43d; outline-offset: 2px; }
@@ -46,7 +58,7 @@ button:focus-visible, select:focus-visible { outline: 2px solid #a7e43d; outline
   .profile-selects label:first-child { grid-column: 1 / -1; }
   .profile-selects select { width: 100%; min-width: 0; height: 36px; padding: 0 8px; color: #edf0f3; background: #242932; border: 1px solid #3a424d; border-radius: 7px; font-family: inherit; font-size: 11px; }
   .profile-selects select:disabled { opacity: .55; }
-  .settings-surface { flex: 1 1 auto; min-height: 0; overflow: hidden; border: 1px solid #333a44; border-radius: 10px; background: #f4f5f6; }
+  .settings-surface { flex: 1 1 auto; min-height: 0; overflow: hidden; border: 1px solid #333a44; border-radius: 10px; background: #222730; }
   .drawer-slice { flex: 0 0 44px; margin-top: 10px; border: 0; border-radius: 9px; background: #a7e43d; color: #15180f; font-family: inherit; font-size: 13px; font-weight: 700; }
 }
 @media (max-width: 380px) {
