@@ -1,5 +1,7 @@
 # Printer Manager (mobile and desktop)
 
+> **Worldwide remote access:** This document describes the local development bridge only. For private HTTPS access from outside your LAN using Cloudflare Tunnel and Access, follow [Secure remote deployment](REMOTE_ACCESS.md). The current bridge needs origin-side authentication and public-host support before it can be safely published.
+
 Open the **AD4 / printer-status button** in the top right of ThreeSlicer to access the management screen. The panel reuses the project's lime accent (#a3e635), slate surfaces and existing responsive styles. The existing camera button still opens a single snapshot.
 
 ## Actual functionality
