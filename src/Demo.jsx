@@ -810,8 +810,8 @@ export default function Demo() {
         <strong>AD4</strong><span className={`state-dot${printerState === 'Disconnected' ? '' : ' is-online'}`} />
         <span className="state-text">{printerState}</span>
       </span>
-      <button ref={cameraButton} className="camera-trigger" type="button" title="Ver captura de la cámara de la impresora"
-        aria-label="Ver cámara de la impresora" onClick={() => setCameraOpen(true)}>
+      <button ref={cameraButton} className="camera-trigger" type="button" title="View a printer camera snapshot"
+        aria-label="View printer camera" onClick={() => setCameraOpen(true)}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M4 7h3l1.5-2h7L17 7h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z"/>
           <circle cx="12" cy="13" r="3.5"/>
@@ -821,14 +821,14 @@ export default function Demo() {
 
     <div className="ad4-controls">
       <label><input type="checkbox" checked={autoSlice} onChange={event => setAutoSlice(event.target.checked)} /> Auto slice</label>
-      {sliced ? <div className="ad4-print" role="group" aria-label="Enviar trabajo a la Adventurer 4"><button disabled={sending} onClick={() => sendPrint(true)}>{sending ? 'Sending…' : 'Print'}</button>
-        <button disabled={sending} onClick={() => sendPrint(false)} title="Enviar sin iniciar impresión">Upload only</button></div>
+      {sliced ? <div className="ad4-print" role="group" aria-label="Send job to the Adventurer 4"><button disabled={sending} onClick={() => sendPrint(true)}>{sending ? 'Sending…' : 'Print'}</button>
+        <button disabled={sending} onClick={() => sendPrint(false)} title="Upload without starting the print">Upload only</button></div>
         : <button onClick={() => setSliceRequest(value => value + 1)} disabled={!objects}>Slice</button>}
     </div>
 
-    {previewVisible && <section className={`playback-dock${playbackExpanded ? '': ' is-compact'}`} aria-label="Simulación del recorrido de impresión">
+    {previewVisible && <section className={`playback-dock${playbackExpanded ? '': ' is-compact'}`} aria-label="Toolpath playback">
       <div className="playback-heading">
-        <div className="playback-title"><strong>Recorrido de la boquilla</strong></div>
+        <div className="playback-title"><strong>Nozzle path</strong></div>
         <div className="playback-heading-right">
           <span>Layer {preview.layer + 1} / {preview.count}</span>
           <button type="button" className="playback-expand" onClick={() => setPlaybackExpanded(value => !value)}
@@ -842,18 +842,18 @@ export default function Demo() {
       </div>
       <div className="playback-layer"><label htmlFor="preview-layer">Layers</label>
         <input id="preview-layer" type="range" min="1" max={preview.count} value={preview.layer + 1}
-          onChange={event => selectLayer(Number(event.target.value) - 1)} aria-label="Seleccionar capa" />
+          onChange={event => selectLayer(Number(event.target.value) - 1)} aria-label="Select layer" />
         <button type="button" className={preview.single ? 'is-selected' : ''} aria-pressed={preview.single}
-          onClick={() => selectLayer(preview.layer, !preview.single)} title="Mostrar solo esta capa">Single layer</button>
+          onClick={() => selectLayer(preview.layer, !preview.single)} title="Show only this layer">Single layer</button>
       </div>
       <div className="playback-actions">
-        <button type="button" disabled={!preview.hasMoves} onClick={() => playPlayback(1)} aria-label="Reproducir recorrido" title="Reproducir" className="playback-primary">▶</button>
-        <button type="button" className="playback-extra" disabled={!preview.hasMoves} onClick={() => playPlayback(8)} aria-label="Avance rápido del recorrido" title="Avance rápido ×8">⏩</button>
-        <button type="button" className="playback-extra" disabled={!preview.hasMoves} onClick={pausePlayback} aria-label="Pausar recorrido" title="Pausar">Ⅱ</button>
-        <button type="button" className="playback-extra" disabled={!preview.hasMoves} onClick={stopPlayback} aria-label="Detener y volver al inicio" title="Detener y volver al inicio">■</button>
+        <button type="button" disabled={!preview.hasMoves} onClick={() => playPlayback(1)} aria-label="Play toolpath" title="Reproducir" className="playback-primary">▶</button>
+        <button type="button" className="playback-extra" disabled={!preview.hasMoves} onClick={() => playPlayback(8)} aria-label="Fast-forward toolpath" title="Fast-forward ×8">⏩</button>
+        <button type="button" className="playback-extra" disabled={!preview.hasMoves} onClick={pausePlayback} aria-label="Pause toolpath" title="Pausar">Ⅱ</button>
+        <button type="button" className="playback-extra" disabled={!preview.hasMoves} onClick={stopPlayback} aria-label="Stop and return to start" title="Stop and return to start">■</button>
         <label className="playback-extra" htmlFor="preview-move">Movement</label>
         <input id="preview-move" type="range" disabled={!preview.hasMoves} min="0" max={Math.max(1, preview.max)} value={Math.min(preview.move, Math.max(1, preview.max))}
-          onChange={event => { pausePlayback(); scrubPreviewMove(viewerHost.current, Number(event.target.value)) }} aria-label="Explorar movimientos de la capa" />
+          onChange={event => { pausePlayback(); scrubPreviewMove(viewerHost.current, Number(event.target.value)) }} aria-label="Scrub movements in this layer" />
         <span className="playback-count">{preview.hasMoves ? `${preview.move} / ${preview.max}` : 'No FFF nozzle path'}</span>
       </div>
     </section>}
@@ -861,24 +861,24 @@ export default function Demo() {
     {cameraOpen && <div className="camera-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setCameraOpen(false) }}>
       <section className="camera-modal" role="dialog" aria-modal="true" aria-labelledby="camera-title">
         <header className="camera-head"><div><span className="camera-eyebrow">PRINTER CAMERA</span><h2 id="camera-title">Printer camera</h2></div>
-          <button ref={cameraClose} type="button" className="camera-close" onClick={() => setCameraOpen(false)} aria-label="Cerrar cámara">×</button></header>
+          <button ref={cameraClose} type="button" className="camera-close" onClick={() => setCameraOpen(false)} aria-label="Close camera">×</button></header>
         <figure className="camera-frame"><img src={cameraSrc || `${import.meta.env.BASE_URL}webcam-test.svg`} alt={cameraSrc ? 'Adventurer 4 snapshot' : 'Printer camera placeholder image'} />
           <figcaption>{cameraSrc ? 'Latest Adventurer 4 snapshot' : 'Demo image · Camera unavailable'}</figcaption></figure>
-        <footer className="camera-foot"><span>Captura simulada: {testCapturedAt.toLocaleString('es-ES')}</span>
+        <footer className="camera-foot"><span>Camera checked: {testCapturedAt.toLocaleString('es-ES')}</span>
           <button type="button" onClick={captureCamera}>{cameraSrc ? 'Refresh snapshot' : 'Retry camera'}</button></footer>
       </section>
     </div>}
 
     {mobile && <>
-      <nav className="mobile-nav" aria-label="Acciones rápidas">
-        <button className="nav-setting" type="button" title="Ajustes de laminado" aria-label="Abrir ajustes de laminado" onClick={() => setDrawer(true)}>
+      <nav className="mobile-nav" aria-label="Quick actions">
+        <button className="nav-setting" type="button" title="Slicing settings" aria-label="Open slicing settings" onClick={() => setDrawer(true)}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
             <path d="M4 7h16M4 12h16M4 17h16" /><circle cx="9" cy="7" r="2" fill="#26313c"/><circle cx="15" cy="12" r="2" fill="#26313c"/><circle cx="8" cy="17" r="2" fill="#26313c"/>
           </svg>
         </button>
         <span className="nav-status" aria-live="polite">{progressText}</span>
         <label className="nav-auto"><input type="checkbox" role="switch" checked={autoSlice} onChange={event => setAutoSlice(event.target.checked)} /><span>Auto slice</span></label>
-        {sliced ? <div className="nav-print-group" role="group" aria-label="Acciones de impresión">
+        {sliced ? <div className="nav-print-group" role="group" aria-label="Print actions">
           <button className="nav-slice" disabled={sending} onClick={() => sendPrint(true)}>{sending ? 'Sending…' : 'Print'}</button>
           <button className="nav-send" disabled={sending} onClick={() => sendPrint(false)}>Upload only</button>
         </div> : <button className="nav-slice" disabled={!objects} onClick={() => setSliceRequest(value => value + 1)}>Slice</button>}
@@ -886,14 +886,14 @@ export default function Demo() {
       {drawer && <div className="drawer-scrim" onClick={() => setDrawer(false)} />}
       <section className={`settings-drawer${drawer ? ' is-open' : ''}`} role="dialog" aria-modal="true" aria-label="Ajustes del laminado">
         <div className="drawer-handle" />
-        <header className="drawer-header"><div><span className="drawer-kicker">Configuración de impresión</span><strong>Slicing settings</strong><small>Perfiles, material y parámetros avanzados</small></div>
-          <button className="close-drawer" onClick={() => setDrawer(false)} aria-label="Cerrar ajustes">×</button></header>
+        <header className="drawer-header"><div><span className="drawer-kicker">Print configuration</span><strong>Slicing settings</strong><small>Presets, material and advanced parameters</small></div>
+          <button className="close-drawer" onClick={() => setDrawer(false)} aria-label="Close settings">×</button></header>
         <div className="profile-selects">
           <label>Process<select disabled={!machine || !catalog} value={settings.print_settings_id ?? ''} onChange={event => chooseProcess(event.target.value)}>
-            <option value="">Perfil de proceso</option>{processOptions.map(name => <option key={name} value={name}>{name}</option>)}
+            <option value="">Process preset</option>{processOptions.map(name => <option key={name} value={name}>{name}</option>)}
           </select></label>
           <label>Material<select disabled={!machine || !catalog} value={settings.filament_settings_id ?? ''} onChange={event => chooseFilament(event.target.value)}>
-            <option value="">Perfil de material</option>{filamentOptions.map(item => <option key={item.name} value={item.name}>{item.name}</option>)}
+            <option value="">Material preset</option>{filamentOptions.map(item => <option key={item.name} value={item.name}>{item.name}</option>)}
           </select></label>
         </div>
         <div className="settings-surface"><SettingsPanel embedded settings={settings} setSettings={setSettings} {...panelData} /></div>
