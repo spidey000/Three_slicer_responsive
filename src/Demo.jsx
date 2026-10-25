@@ -456,7 +456,7 @@ export default function Demo() {
             <option value="">Perfil de proceso</option>{processOptions.map(name => <option key={name} value={name}>{name}</option>)}
           </select></label>
           <label>Material<select disabled={!machine || !catalog} value={settings.filament_settings_id ?? ''} onChange={event => chooseFilament(event.target.value)}>
-            <option value="">Perfil de material</option>{filamentOptions.map(name => <option key={name} value={name}>{name}</option>)}
+            <option value="">Perfil de material</option>{filamentOptions.map(item => <option key={item.name} value={item.name}>{item.name}</option>)}
           </select></label>
         </div>
         <div className="settings-surface"><SettingsPanel embedded settings={settings} setSettings={setSettings} {...panelData} /></div>
