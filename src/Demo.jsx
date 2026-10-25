@@ -275,7 +275,6 @@ export default function Demo() {
   // responsive layout rules into its open root so its real tools remain intact at phone/tablet widths.
   useEffect(() => {
     const observed = new WeakSet()
-    const observer = new MutationObserver(install)
     const install = () => {
       for (const host of document.querySelectorAll('#root *')) {
         const root = host.shadowRoot
@@ -325,6 +324,7 @@ export default function Demo() {
         root.append(style)
       }
     }
+    const observer = new MutationObserver(install)
     install()
     observer.observe(document.getElementById('root'), { childList: true, subtree: true })
     return () => { observer.disconnect(); setToolbarTarget(null) }
