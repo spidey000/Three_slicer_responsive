@@ -73,7 +73,7 @@ export function annotateAd4Gcode(gcode, stats, settings = {}, rgba = null, canva
   const pattern = settings.sparse_infill_pattern
   if (typeof pattern === 'string' && /^[a-z_0-9-]+$/i.test(pattern)) addComment(comments, raw, 'fill_pattern', pattern)
   let thumbnail = ''
-  if (!/^;\\s*thumbnail begin\\b/im.test(raw)) {
+  if (!/^;\s*thumbnail begin\b/im.test(raw)) {
     try { thumbnail = thumbnailBlockFromRgba(rgba, canvasFactory) }
     catch { /* A failed GPU/canvas render must never block sending printable G-code. */ }
   }
