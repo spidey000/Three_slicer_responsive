@@ -125,16 +125,16 @@ class TimelapseService:
                 raise
             self.folder = folder
             self.worker = worker
-            self.watching = bool(auto and status_reader)
+            self.watching = bool(status_reader)
             self.last_error = None
             event = threading.Event()
             self._event = event
-            thread = threading.Thread(target=self._watch, args=(folder, worker, event, status_reader if auto else None),
+            thread = threading.Thread(target=self._watch, args=(folder, worker, event, status_reader, auto),
                                       daemon=True, name='AD4-timelapse-watch')
             thread.start()
         return self.state()
 
-    def _watch(self, folder, worker, event, status_reader):
+    def _watch(self, folder, worker, event, status_reader, auto):
         seen_print = False
         ready_streak = 0
         started = time.monotonic()
@@ -157,7 +157,7 @@ class TimelapseService:
                 if ready_streak >= 2:
                     self.stop('print_finished')
                     return
-            elif not seen_print and time.monotonic() - started > 600:
+            elif auto and not seen_print and time.monotonic() - started > 1800:
                 self.stop('print_not_observed')
                 return
             else:
