@@ -591,10 +591,10 @@ if __name__ == '__main__':
         sys.exit('Missing dist/: run npm run build first')
     if ACCESS_CONFIG:
         _jwks_client(ACCESS_CONFIG['jwks_url'])  # Fail fast if PyJWT is missing.
-    TIMELAPSES.recover()  # Finalize interrupted recordings before accepting requests.
         print('Cloudflare Access validation enabled: ' + ACCESS_CONFIG['public_origin'], flush=True)
     else:
         print('Local-only mode: Cloudflare authentication disabled', flush=True)
+    TIMELAPSES.recover()  # Finalize interrupted recordings before accepting requests.
     port = int(os.environ.get('AD4_WEB_PORT', '8765'))
     print('AD4 web: http://127.0.0.1:' + str(port) + BASE, flush=True)
     ThreadingHTTPServer(('127.0.0.1', port), Handler).serve_forever()
