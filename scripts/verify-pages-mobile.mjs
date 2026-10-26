@@ -189,6 +189,21 @@ async function checkWidth(width) {
           && getComputedStyle(root.querySelector('.sp-builder')).display !== 'none'
       })
       if (!visibleFilters) throw new Error('Search/category filters missing when accordion expanded')
+      await page.locator('.settings-surface .sp-search').fill('layer_height')
+      await page.locator('.settings-extras-toggle').click()
+      const afterSearchCollapse = await page.evaluate(() => {
+        const root = document.querySelector('.settings-surface .sp-embedded')?.shadowRoot
+        const pages = root?.querySelector('.sp-pages')
+        return {
+          searchValue: root?.querySelector('.sp-search')?.value,
+          tabsVisible: !!pages && getComputedStyle(pages).display !== 'none',
+          collapsed: document.querySelector('.settings-extras-toggle')?.getAttribute('aria-expanded') === 'false',
+        }
+      })
+      if (afterSearchCollapse.searchValue || !afterSearchCollapse.tabsVisible || !afterSearchCollapse.collapsed) {
+        throw new Error('Collapsing an active search failed to restore category tabs: ' + JSON.stringify(afterSearchCollapse))
+      }
+      await page.locator('.settings-extras-toggle').click()
 
       // The first loaded material must be Artillery PLA Basic, regardless of
       // the first vendor-recommended filament in the upstream AD4 catalog.
