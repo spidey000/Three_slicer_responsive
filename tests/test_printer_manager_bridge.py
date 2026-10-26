@@ -1,10 +1,8 @@
 """Regression checks for the local printer manager bridge; no physical printer needed."""
-import io
 import json
 from pathlib import Path
 import struct
 import tempfile
-import zipfile
 import threading
 import unittest
 from unittest.mock import patch
@@ -112,27 +110,44 @@ class BridgeChecks(unittest.TestCase):
             self.assertIsNone(detailed[1]['uploaded_at'])
             self.assertEqual(self.request('/api/printer/files'), ['/data/demo.gx', '/data/old.gx'])
 
-    def test_saved_timelapse_gallery_download_and_delete(self):
+    def test_saved_timelapse_mp4_gallery_range_and_delete(self):
         with tempfile.TemporaryDirectory() as work:
             root = Path(work) / 'timelapses'
             folder = root / '20261026T154800-1234abcd'
             folder.mkdir(parents=True)
-            (folder / 'frame-20261026T154801-000000.jpg').write_bytes(b'\xff\xd8demo\xff\xd9')
-            with patch.object(bridge, 'TIMELAPSE_ROOT', root), patch.object(bridge, 'TIMELAPSE_DIR', None):
+            video = b'\0\0\0\x18ftypisom' + b'0' * 100
+            (folder / 'timelapse.mp4').write_bytes(video)
+            (folder / 'session.json').write_text('{"frames": 400, "status": "complete"}')
+            with patch.object(bridge.TIMELAPSES, 'root', root):
                 gallery = self.request('/api/printer/timelapses')
                 self.assertEqual(len(gallery), 1)
-                self.assertEqual(gallery[0]['frames'], 1)
+                self.assertTrue(gallery[0]['video_ready'])
+                self.assertEqual(gallery[0]['frames'], 400)
                 base = 'http://127.0.0.1:' + str(self.port)
-                with urlopen(base + '/api/printer/timelapses/frame?id=' + folder.name + '&index=0') as img:
-                    self.assertEqual(img.read(), b'\xff\xd8demo\xff\xd9')
+                with urlopen(base + '/api/printer/timelapses/video?id=' + folder.name) as response:
+                    self.assertEqual(response.headers['Content-Type'], 'video/mp4')
+                    self.assertEqual(response.read(), video)
+                req = Request(base + '/api/printer/timelapses/video?id=' + folder.name,
+                              headers={'Range': 'bytes=1-5'})
+                with urlopen(req) as response:
+                    self.assertEqual(response.status, 206)
+                    self.assertEqual(response.read(), video[1:6])
+                    self.assertEqual(response.headers['Content-Range'], 'bytes 1-5/' + str(len(video)))
                 with urlopen(base + '/api/printer/timelapses/download?id=' + folder.name) as response:
-                    with zipfile.ZipFile(io.BytesIO(response.read())) as archive:
-                        self.assertEqual(len(archive.namelist()), 1)
+                    self.assertIn('.mp4', response.headers['Content-Disposition'])
+                    self.assertEqual(response.read(), video)
                 with self.assertRaises(HTTPError):
-                    self.request('/api/printer/timelapses/frame?id=..%2Fsecret')
+                    self.request('/api/printer/timelapses/video?id=..%2Fsecret')
                 self.assertEqual(self.request('/api/printer/timelapses/delete', {'id': folder.name}),
                                  {'deleted': folder.name})
                 self.assertFalse(folder.exists())
+
+    def test_auto_timelapse_requires_ffmpeg_before_printing(self):
+        with patch.object(bridge.TIMELAPSES, 'require_encoder', side_effect=RuntimeError('install ffmpeg')):
+            with self.assertRaises(HTTPError) as error:
+                self.request('/api/printer/actions', {
+                    'action': 'print', 'file': '/data/good.gx', 'timelapse': True})
+            self.assertEqual(error.exception.code, 502)
 
     def test_camera_live_rejects_external_urls(self):
         with patch.object(bridge, 'command', return_value='http://8.8.8.8:8080/?action=stream'):
