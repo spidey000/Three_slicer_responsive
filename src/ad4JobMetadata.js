@@ -10,6 +10,7 @@ export function formatPrintDuration(seconds) {
 
 function settingNumber(value) {
   const candidate = Array.isArray(value) ? value[0] : value
+  if (candidate == null || candidate === '') return null
   const n = Number(candidate)
   return Number.isFinite(n) && n >= 0 ? n : null
 }
