@@ -18,7 +18,7 @@ FFAD4Manager CLI -> Adventurer 4 on the local printer network.
 First read README.md, docs/REMOTE_ACCESS.md, docs/AD4_LOCAL.md,
 and the FFAD4Manager CLI docs. Work on a Linux computer that stays online
 and shares a trusted LAN with the Adventurer 4. Require Node.js 20+,
-npm, Python 3.9+, a Python venv, pip and cloudflared.
+npm, Python 3.9+, a Python venv, pip, FFmpeg (with libx264) and cloudflared.
 
 IMPORTANT: Cloudflare configuration MUST precede publishing the Tunnel route.
 Never make a public, unauthenticated printer-control endpoint. Never expose
@@ -35,6 +35,8 @@ Ask permission before changing OS packages, services, firewall or Cloudflare.
    Install FFAD4Manager from its source repository with pip install -e and
    install PyJWT[crypto] for origin JWT signature validation. Run the read-only
    ffadv4manager status --json command; never start a print while testing.
+   Verify that ffmpeg and the libx264 H.264 encoder are installed on the bridge
+   host (install ffmpeg with the OS package manager if missing, with permission).
 3. Enter Three_slicer_responsive, run npm ci and npm run build, and verify that
    dist/index.html exists. Do not deploy an unbuilt or GitHub-Pages-only version.
 4. In Cloudflare Zero Trust, create/reuse a Self-hosted Access application for
