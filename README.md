@@ -106,7 +106,7 @@ A responsive browser-based slicer and Adventurer 4 management UI powered by [Thr
 | Toolpath preview and simulated nozzle traversal | Yes | Layer and move scrubbing, play, fast-forward, pause and reset; simulated movement is **not** an accurate real-time print prediction. |
 | Project/model export | Yes | Native viewer export actions, including 3MF/STL where supported by the upstream package. |
 | Live printer status label | Authenticated self-hosted bridge | Reads `ffadv4manager status --json` approximately every 8 seconds; no bridge on GitHub Pages. |
-| Camera still image | Authenticated self-hosted bridge | Uses `ffadv4manager camera snapshot`. If unavailable, the UI clearly shows a demo placeholder, not a live feed. |
+| Camera still and live feed | Authenticated self-hosted bridge | JPEG snapshot or opt-in MJPEG video proxied through the protected bridge; never exposes the private camera IP to the browser. |
 | Upload sliced G-code to printer | Authenticated self-hosted bridge | Invokes `ffadv4manager upload` and automatic G-code-to-GX wrapping. Requires a reachable printer. |
 | Upload and request print start | Authenticated self-hosted bridge | Invokes `ffadv4manager upload ... --start`. Device state must be supervised. |
 
@@ -172,10 +172,10 @@ The Vite dev server proxies `/api` to the local bridge on port `8765`; printer f
 | CLI function / command | CLI support | ThreeSlicer web UI | Details |
 | --- | --- | --- | --- |
 | Printer status, temperature, progress — `status --json` | Implemented | **UI** | Status, temperatures, current job, layers and reported progress in Printer Manager. |
-| Printer camera still — `camera snapshot` | Implemented | **UI** | One image per request/refresh, not continuous video. |
+| Printer camera — `camera snapshot/url` | Implemented | **UI (local bridge)** | On-demand stills and opt-in live MJPEG feed. |
 | Upload G-code / GX — `upload FILE` | Implemented | **UI** | UI posts freshly sliced G-code; CLI performs GX wrapping and listing check. |
 | Upload and start — `upload FILE --start` | Implemented | **UI** | Requests an actual print; requires explicit user action. |
-| Readable and JSON file list — `files [--json]` | Implemented | **UI (local bridge)** | Printer Manager lists files and can start an existing file. |
+| Readable and JSON file list — `files [--json]` | Implemented | **UI (local bridge)** | Ten files per page with sort by name, duration or uploaded date; missing metadata remains unknown. |
 | Raw file-list diagnostics — `files-raw` | Implemented | **CLI only** | Debug output is not shown in the app. |
 | Existing printer file BMP preview — `files preview` | Implemented | **CLI only** | Different from camera snapshots. |
 | Printer discovery — `discover [--json]` | Implemented | **UI (local bridge)** | Discover and select a printer exposed on port 8899. |
@@ -186,8 +186,8 @@ The Vite dev server proxies `/api` to the local bridge on port `8765`; printer f
 | Wait for printer conditions — `wait` | Implemented | **CLI only** | No web automation for ready/temperature thresholds. |
 | Monitor to JSONL — `monitor` | Implemented | **CLI only** | Status/event logs and optional state-change snapshots. |
 | Desktop state notifications — `notify` | Implemented | **UI (local bridge)** | Requires Linux `notify-send`; no web notifications. |
-| Timelapse capture — `camera timelapse` | Implemented | **UI (local bridge)** | Interval-based still images; not synchronized to layers. |
-| Get/open camera URL — `camera url/open` | Implemented | **CLI only** | UI provides a still-image modal, not a raw stream player. |
+| Timelapse capture — `camera timelapse` | Implemented | **UI (local bridge)** | Persistent frame sessions with browse, ZIP download and deletion; not synchronized to layers. |
+| Get/open camera URL — `camera url/open` | Implemented | **UI uses `camera url`** | Protected server retrieves and proxies the real MJPEG stream; the browser never receives the raw LAN URL. |
 | Convert G-code to GX — `convert` | Implemented | **CLI only** as a separate control | Automatic conversion during upload is used, but no standalone UI converter. |
 | Inspect local file metadata — `inspect` | Implemented | **CLI only** | CLI checks SHA-256, size and limited G-code metadata. |
 | Start a stored remote job — `print REMOTE_NAME` | Implemented | **UI (local bridge)** | Stored files can be selected and printed after confirmation. |
@@ -199,7 +199,7 @@ The Vite dev server proxies `/api` to the local bridge on port `8765`; printer f
 | CLI help — `help` | Implemented | **CLI only** | Full CLI documentation is external to the web UI. |
 | Separate FFAD4Manager slicer launcher — `slicer` | Implemented in FFAD4Manager | **Not used by this web app** | The CLI ships its own separately bundled local slicer UI; this repository uses `npm run local` and its own bridge. |
 | OrcaSlicer post-processing upload hook | Implemented separately | **Not integrated** | Available in FFAD4Manager for OrcaSlicer, not called by this web app. |
-| Continuous authenticated camera streaming in this UI | Not provided by this integration | **Not available** | Only on-demand JPEG snapshots are implemented here. |
+| Authenticated MJPEG camera stream | Implemented | **UI (local bridge)** | Live feed requires private camera connectivity from the bridge and an active Access-protected session. |
 | End-to-end uploaded-file integrity verification | Not implemented | **Not available** | M661 confirms listed filename, not the file's stored content/size. |
 | Physically verified unattended print start / guaranteed no-start upload | Not established | **Not guaranteed** | Printer firmware side effects and GX compatibility require supervised real-world validation. |
 
