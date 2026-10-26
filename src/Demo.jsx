@@ -1099,7 +1099,7 @@ export default function Demo() {
             </svg>
           </span>
           <span className="settings-extras-text"><strong>Profiles &amp; filters</strong>
-            <small>Process, material, search &amp; category</small></span>
+            <small>{filtersExpanded ? 'Expanded · Select process or material' : 'Process, material, search & category'}</small></span>
           <span className="settings-extras-chevron" aria-hidden="true">{filtersExpanded ? '⌃' : '⌄'}</span>
         </button>
         <div className="settings-extras" id="settings-extras" hidden={!filtersExpanded}>
