@@ -11,6 +11,7 @@ import { schema, uiTree } from 'three-slicer/data'
 import { makeCfg, disabledKeys } from 'three-slicer/toggle'
 import './step_loader.js'
 import PrinterManager from './PrinterManager.jsx'
+import ToggleSwitch from './ToggleSwitch.jsx'
 import { AD4_STOCK_PROCESS, AD4_SAFE_PROCESS, AD4_SAFE_PROCESS_OVERRIDES, applyAd4SafeMachineLimits, applyAd4SafeProcess } from './ad4SafeProfile.js'
 import {
   SAVE_PROCESS_OPTION, SAVE_FILAMENT_OPTION, ARTILLERY_PLA_BASIC,
@@ -384,6 +385,12 @@ export default function Demo() {
   const [progress, setProgress] = useState(null)
   const machine = AD4
   const [autoSlice, setAutoSlice] = useState(false)
+  const [recordTimelapse, setRecordTimelapse] = useState(() => {
+    try { return localStorage.getItem('ad4-record-timelapse') === 'true' } catch { return false }
+  })
+  useEffect(() => {
+    try { localStorage.setItem('ad4-record-timelapse', String(recordTimelapse)) } catch { /* storage disabled */ }
+  }, [recordTimelapse])
   const [objects, setObjects] = useState(0)
   const [sliced, setSliced] = useState(null)
   const [sending, setSending] = useState(false)
@@ -454,7 +461,7 @@ export default function Demo() {
     }
     setSending(true)
     try {
-      const response = await fetch(`/api/printer/jobs?start=${start ? 'true' : 'false'}`, {
+      const response = await fetch(`/api/printer/jobs?start=${start ? 'true' : 'false'}&timelapse=${start && recordTimelapse ? 'true' : 'false'}`, {
         method: 'POST', headers: { 'Content-Type': 'text/plain; charset=utf-8' }, body: sliced.gcode,
       })
       const result = await response.json()
@@ -948,7 +955,8 @@ export default function Demo() {
     </>, toolbarTarget)}
 
     <div className="ad4-controls">
-      <label><input type="checkbox" checked={autoSlice} onChange={event => setAutoSlice(event.target.checked)} /> Auto slice</label>
+      <ToggleSwitch id="desktop-auto-slice" label="Auto slice" checked={autoSlice} onChange={setAutoSlice}/>
+      <ToggleSwitch id="desktop-timelapse" label="Timelapse" checked={recordTimelapse} onChange={setRecordTimelapse}/>
       {sliced ? <div className="ad4-print" role="group" aria-label="Send job to the Adventurer 4"><button disabled={sending} onClick={() => sendPrint(true)}>{sending ? 'Sending…' : 'Print'}</button>
         <button disabled={sending} onClick={() => sendPrint(false)} title="Upload without starting the print">Upload only</button></div>
         : <button onClick={() => setSliceRequest(value => value + 1)} disabled={!objects}>Slice</button>}
@@ -986,7 +994,7 @@ export default function Demo() {
       </div>
     </section>}
 
-    {managerOpen && <PrinterManager onClose={() => setManagerOpen(false)} />}
+    {managerOpen && <PrinterManager onClose={() => setManagerOpen(false)} timelapseEnabled={recordTimelapse} />}
 
     {cameraOpen && <div className="camera-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setCameraOpen(false) }}>
       <section className="camera-modal" role="dialog" aria-modal="true" aria-labelledby="camera-title">
@@ -1006,7 +1014,8 @@ export default function Demo() {
           </svg>
         </button>
         <span className="nav-status" aria-live="polite">{progressText}</span>
-        <label className="nav-auto"><input type="checkbox" role="switch" checked={autoSlice} onChange={event => setAutoSlice(event.target.checked)} /><span>Auto slice</span></label>
+        <ToggleSwitch id="mobile-auto-slice" className="nav-auto" label="Auto slice" checked={autoSlice} onChange={setAutoSlice}/>
+        <ToggleSwitch id="mobile-timelapse" className="nav-auto nav-timelapse" label="Timelapse" checked={recordTimelapse} onChange={setRecordTimelapse}/>
         {sliced ? <div className="nav-print-group" role="group" aria-label="Print actions">
           <button className="nav-slice" disabled={sending} onClick={() => sendPrint(true)}>{sending ? 'Sending…' : 'Print'}</button>
           <button className="nav-send" disabled={sending} onClick={() => sendPrint(false)}>Upload only</button>
