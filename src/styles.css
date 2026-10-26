@@ -366,3 +366,33 @@ button:focus-visible, select:focus-visible { outline: 2px solid #a3e635; outline
 @media(prefers-reduced-motion:reduce) {
   .settings-drawer .settings-extras-toggle { transition:none; }
 }
+
+/* Tap-to-explain dialog for the upstream parameters. It is rendered in our drawer,
+   so it remains readable outside the slicer Shadow DOM without browser popups. */
+.settings-drawer .setting-help-backdrop {
+  position:absolute; inset:0; z-index:45;
+  display:flex; align-items:center; justify-content:center; padding:14px;
+  background:#080e15ba; backdrop-filter:blur(3px);
+}
+.setting-help-popover {
+  box-sizing:border-box; width:min(100%,420px); min-width:0; max-height:min(72dvh,490px);
+  overflow-y:auto; padding:17px 18px 16px; border:1px solid #648443;
+  border-radius:16px; background:#202c35; box-shadow:0 20px 55px #000b;
+  color:#eaf2f6; cursor:pointer;
+}
+.setting-help-header { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.setting-help-header > span { color:#a3e635; font-size:10px; letter-spacing:.11em; font-weight:800; }
+.setting-help-header button { display:grid; place-items:center; width:28px; height:28px;
+  border:1px solid #4b5d68; border-radius:8px; color:#e3edf2; background:#303d48;
+  font-size:20px; line-height:1; cursor:pointer; }
+.setting-help-header button:focus-visible { outline:2px solid #a3e635; outline-offset:2px; }
+.setting-help-popover h3 { margin:10px 0 9px; font-size:17px; line-height:1.25; }
+.setting-help-popover p { margin:0; font-size:13px; line-height:1.65; color:#c8d5dd;
+  white-space:pre-line; overflow-wrap:anywhere; }
+.setting-help-hint { display:block; padding-top:14px; color:#98b27e; font-size:10px; }
+@media(max-width:767px) {
+  .settings-drawer .setting-help-backdrop { padding:12px; }
+  .setting-help-popover { padding:15px 16px; }
+  .setting-help-popover h3 { font-size:16px; }
+  .setting-help-popover p { font-size:12px; }
+}
