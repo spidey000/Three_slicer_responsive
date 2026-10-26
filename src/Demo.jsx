@@ -368,7 +368,7 @@ function applyPreset(base, preset, keys, idKey, name) {
 }
 
 export default function Demo() {
-  const [settings, setSettings] = useState(() => ({ ...applyAd4SafeMachineLimits(printerSettings(AD4)), printer_settings_id: AD4 }))
+  const [settings, setSettings] = useState(() => ({ ...applyAd4SafeMachineLimits(printerSettings(AD4)), thumbnails: '80x60/PNG', printer_settings_id: AD4 }))
   const [plateSettings, setPlateSettings] = useState({})
   const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 767px)').matches)
   const [drawer, setDrawer] = useState(false)
