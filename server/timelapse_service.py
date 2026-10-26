@@ -206,7 +206,7 @@ class TimelapseService:
             result = subprocess.run([
                 'ffmpeg', '-hide_banner', '-loglevel', 'error', '-nostdin', '-y',
                 '-framerate', '10', '-pattern_type', 'glob', '-i', str(folder / 'frame-*.jpg'),
-                '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2',
+                '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2:in_range=full:out_range=limited,format=yuv420p',
                 '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '28',
                 '-pix_fmt', 'yuv420p', '-movflags', '+faststart',
                 str(temp),
