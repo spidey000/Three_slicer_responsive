@@ -32,6 +32,8 @@ jobs:
         run: npm run build
       - name: Test local printer manager bridge
         run: python3 -m unittest discover -s tests -p 'test_printer_manager_bridge.py'
+      - name: Test print-aware MP4 recording and recovery
+        run: python3 -m unittest discover -s tests -p 'test_timelapse_service.py'
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
