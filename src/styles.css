@@ -91,11 +91,6 @@ button:focus-visible, select:focus-visible { outline: 2px solid #a3e635; outline
   .mobile-nav button span { font-size: 15px; line-height: 1; }
   .nav-setting { grid-column: 1; grid-row: 2; background: #292f38; color: #e3e8ee; }
   .nav-auto { grid-column: 2; grid-row: 2; display:flex; align-items:center; justify-content:center; gap:5px; padding:0 5px; border:1px solid #3b4450; border-radius:9px; color:#d3dce2; font-size:10px; white-space:nowrap; cursor:pointer; }
-  .nav-auto input { appearance:none; flex:0 0 30px; width:30px; height:18px; margin:0; border:1px solid #66737c; border-radius:99px; background:#343c47; position:relative; cursor:pointer; transition:background .18s ease; }
-  .nav-auto input::before { content:''; position:absolute; left:2px; top:2px; width:12px; height:12px; border-radius:50%; background:#d7dfe3; transition:transform .18s ease; }
-  .nav-auto input:checked { background:#a3e635; border-color:#a3e635; }
-  .nav-auto input:checked::before { background:#17200d; transform:translateX(12px); }
-  .nav-auto input:focus-visible { outline:2px solid #a3e635; outline-offset:2px; }
   .nav-slice { grid-column: 3; grid-row: 2; background: #a3e635; color: #15180f; }
   .nav-print-group { grid-column:3; grid-row:2; display:grid; grid-template-columns:1fr 1fr; overflow:hidden; border:1px solid #617079; border-radius:9px; }
   .nav-print-group button { border-radius:0; font-size:11px; }
@@ -238,9 +233,6 @@ button:focus-visible, select:focus-visible { outline: 2px solid #a3e635; outline
   .mobile-nav .nav-setting { background:#26313c; border:1px solid #364350; padding:0; }
   .mobile-nav .nav-setting svg { width:20px; height:20px; }
   .nav-auto { padding: 0 8px; background: #1d262f; border-color:#35434f; border-radius:11px; font-size:11px; }
-  .nav-auto input { width:32px; flex-basis:32px; height:20px; }
-  .nav-auto input::before { width:14px; height:14px; }
-  .nav-auto input:checked::before { transform:translateX(12px); }
   .nav-print-group { border-radius:11px; border-color:#536573; }
   .nav-print-group button { font-size:11px; }
   .nav-print-group .nav-send { border-left-color:#70808d !important; }
@@ -335,4 +327,21 @@ button:focus-visible, select:focus-visible { outline: 2px solid #a3e635; outline
   .profile-selects { grid-template-columns:minmax(0,1fr); gap:8px; }
   .settings-drawer .profile-picker select { min-height:40px; }
   .profile-save-dialog { padding:18px; border-radius:18px; }
+}
+
+
+/* Quick actions: four equally considered controls at mobile widths. */
+@media(max-width:767px) {
+  .mobile-nav { grid-template-columns:42px minmax(67px,.9fr) minmax(70px,.96fr) minmax(80px,1.14fr); }
+  .mobile-nav .nav-auto { grid-row:2; grid-column:2; padding:5px 3px; gap:4px; }
+  .mobile-nav .nav-timelapse { grid-column:3; }
+  .mobile-nav > .nav-slice, .mobile-nav > .nav-print-group { grid-row:2; grid-column:4; }
+  .mobile-nav .nav-print-group button { font-size:9px; }
+  .mobile-nav .nav-send { font-size:9px; white-space:normal; line-height:1.1; }
+}
+@media(max-width:360px) {
+  .mobile-nav { grid-template-columns:39px minmax(61px,.9fr) minmax(67px,1fr) minmax(75px,1.2fr); gap:4px; }
+  .mobile-nav .ui-toggle-caption { font-size:8px; }
+  .mobile-nav .ui-toggle-track { flex-basis:26px; width:26px; }
+  .mobile-nav .ui-toggle input:checked + .ui-toggle-track .ui-toggle-thumb { transform:translateX(8px); }
 }
