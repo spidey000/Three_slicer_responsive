@@ -186,7 +186,7 @@ The Vite dev server proxies `/api` to the local bridge on port `8765`; printer f
 | Wait for printer conditions — `wait` | Implemented | **CLI only** | No web automation for ready/temperature thresholds. |
 | Monitor to JSONL — `monitor` | Implemented | **CLI only** | Status/event logs and optional state-change snapshots. |
 | Desktop state notifications — `notify` | Implemented | **UI (local bridge)** | Requires Linux `notify-send`; no web notifications. |
-| Timelapse capture — `camera timelapse` | Implemented | **UI (local bridge)** | Persistent frame sessions with browse, ZIP download and deletion; not synchronized to layers. |
+| Timelapse capture — `camera timelapse` | Implemented | **UI (local bridge)** | Optional Auto Timelapse switch beside Auto slice, print lifecycle detection, H.264 MP4 recording, video playback/download and deletion. |
 | Get/open camera URL — `camera url/open` | Implemented | **UI uses `camera url`** | Protected server retrieves and proxies the real MJPEG stream; the browser never receives the raw LAN URL. |
 | Convert G-code to GX — `convert` | Implemented | **CLI only** as a separate control | Automatic conversion during upload is used, but no standalone UI converter. |
 | Inspect local file metadata — `inspect` | Implemented | **CLI only** | CLI checks SHA-256, size and limited G-code metadata. |
@@ -200,6 +200,7 @@ The Vite dev server proxies `/api` to the local bridge on port `8765`; printer f
 | Separate FFAD4Manager slicer launcher — `slicer` | Implemented in FFAD4Manager | **Not used by this web app** | The CLI ships its own separately bundled local slicer UI; this repository uses `npm run local` and its own bridge. |
 | OrcaSlicer post-processing upload hook | Implemented separately | **Not integrated** | Available in FFAD4Manager for OrcaSlicer, not called by this web app. |
 | Authenticated MJPEG camera stream | Implemented | **UI (local bridge)** | Live feed requires private camera connectivity from the bridge and an active Access-protected session. |
+| MP4 timelapse encoder | Implemented | **Self-hosted bridge** | Install FFmpeg on the Linux bridge host (`sudo apt-get install ffmpeg`); JPEG sources are retained if MP4 encoding fails. |
 | End-to-end uploaded-file integrity verification | Not implemented | **Not available** | M661 confirms listed filename, not the file's stored content/size. |
 | Physically verified unattended print start / guaranteed no-start upload | Not established | **Not guaranteed** | Printer firmware side effects and GX compatibility require supervised real-world validation. |
 
@@ -223,6 +224,7 @@ The CLI has broader capabilities than this web UI. For details, flags and precis
 - **Access control:** Without `CF_ACCESS_*` variables, the bridge accepts only local loopback requests and must **not** be published through Cloudflare Tunnel. With all four required variables configured, it accepts the configured public hostname **only with a valid Cloudflare Access JWT** (verified signature, issuer, audience, expiry and authorized email); public POST requests additionally require the exact HTTPS Origin. Cloudflare Access policy and origin validation are both mandatory. See [secure remote installation](docs/REMOTE_ACCESS.md).
 - **Browser requirements:** The viewer needs WebGL. GitHub Pages cannot set isolation headers needed for `SharedArrayBuffer`; the slicer may fall back to a single-threaded worker.
 - **Slicing profile:** This app pins the bundled `Flashforge Adventurer 4 Series 0.4 Nozzle` preset for slicing. The new discovered-printer list and CLI connection profiles select a command target; they do not change slicer machine presets.
+- **Automatic timelapse:** Enable the Timelapse switch next to Auto slice before pressing Print. The bridge independently stops recording on print completion or cancellation, generates a compressed MP4 and retains videos across restarts. The browser may be closed while printing. Requires `ffmpeg` on the bridge host; enable it only when the camera is reachable.
 - **Hardware testing:** We can validate builds and the deployed browser UI automatically; we cannot claim the physical print protocol is verified across printer firmware versions.
 
 ## Developer notes
