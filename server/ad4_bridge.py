@@ -476,7 +476,7 @@ class Handler(SimpleHTTPRequestHandler):
                 auto_timelapse = start and query.get('timelapse', ['false'])[0] == 'true'
                 if auto_timelapse:
                     TIMELAPSES.require_encoder()
-                    if TIMELAPSES.state()['running'] or TIMELAPSES.state()['encoding']:
+                    if TIMELAPSES.state()['id'] or TIMELAPSES.state()['encoding']:
                         raise ValueError('A timelapse session is already active')
                 with tempfile.TemporaryDirectory() as directory:
                     filename = Path(directory) / name
@@ -499,7 +499,7 @@ class Handler(SimpleHTTPRequestHandler):
                     auto_timelapse = body.get('timelapse') is True
                     if auto_timelapse:
                         TIMELAPSES.require_encoder()
-                        if TIMELAPSES.state()['running'] or TIMELAPSES.state()['encoding']:
+                        if TIMELAPSES.state()['id'] or TIMELAPSES.state()['encoding']:
                             raise ValueError('A timelapse session is already active')
                     filename = body.get('file')
                     listed = json.loads(command('files', '--json'))
@@ -561,7 +561,7 @@ class Handler(SimpleHTTPRequestHandler):
                     # Manual recordings made during a print also stop at print completion.
                     argv = cli_argv()
                     return self.json(200, TIMELAPSES.start(
-                        argv, selected_status_reader(argv), auto=True))
+                        argv, selected_status_reader(argv), auto=False))
                 raise ValueError('Acción de timelapse inválida')
             if path == '/api/printer/notifications':
                 action = body.get('action')
