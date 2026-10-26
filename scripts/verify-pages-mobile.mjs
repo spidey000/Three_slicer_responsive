@@ -130,8 +130,30 @@ async function checkWidth(width) {
     if (english.lang !== 'en' || english.title !== 'Your next project starts here' || english.button !== 'Open 3D model') {
       throw new Error(`English UI regression at ${width}px: ${JSON.stringify(english)}`)
     }
+    // All page tabs share the width of the lower level selector; no horizontal scroll.
+    await page.locator('.nav-setting').click()
+    const segments = await page.evaluate(() => {
+      const root = document.querySelector('.settings-surface .sp-embedded')?.shadowRoot
+      const parent = root?.querySelector('.sp-pages')
+      const buttons = Array.from(parent?.querySelectorAll('button') || [])
+      const rect = parent?.getBoundingClientRect()
+      return {
+        labels: buttons.map(button => button.textContent?.trim()),
+        width: parent?.clientWidth,
+        scroll: parent?.scrollWidth,
+        bounds: buttons.every(button => {
+          const item = button.getBoundingClientRect()
+          return item.left >= rect.left - 1 && item.right <= rect.right + 1
+        }),
+        noDots: Array.from(root?.querySelectorAll('.row .dirty-dot, .row .override-dot') || [])
+          .every(dot => getComputedStyle(dot).display === 'none'),
+      }
+    })
+    if (segments.labels.length < 4 || !segments.bounds || segments.scroll > segments.width + 1 || !segments.noDots) {
+      throw new Error('Segmented categories or dirty-marker clipping at ' + width + ': ' + JSON.stringify(segments))
+    }
+    if (width !== 390) await page.locator('.close-drawer').click()
     if (width === 390) {
-      await page.locator('.nav-setting').click()
       await page.waitForTimeout(150)
       const modal = page.locator('.settings-drawer')
       const modalContent = await modal.textContent()
@@ -177,6 +199,43 @@ async function checkWidth(width) {
       }
       if (compact.fieldWidth && compact.fieldWidth > 115) {
         throw new Error('Short numeric field unnecessarily wide: ' + JSON.stringify(compact))
+      }
+      // Real schema descriptions must open from parameter names and close on
+      // the explanation itself or outside; ordinary G-code inputs stay editable.
+      await page.locator('.settings-surface .sp-pages button').filter({hasText:'Speed'}).click()
+      await page.locator('.settings-surface .sp-body .row .lbl-link').first().click()
+      const popup = page.locator('.setting-help-popover')
+      await popup.waitFor({state:'visible'})
+      const explanation = (await popup.locator('p').textContent() || '').trim()
+      if (explanation.length < 25 || !(await popup.locator('h3').textContent()).trim()) {
+        throw new Error('Parameter tooltip lacks useful explanatory content: ' + explanation)
+      }
+      await popup.click({position:{x:20,y:50}})
+      await popup.waitFor({state:'hidden'})
+      await page.locator('.settings-surface .sp-body .row .lbl-link').first().click()
+      await popup.waitFor({state:'visible'})
+      await page.locator('.setting-help-backdrop').click({position:{x:4,y:4}})
+      await popup.waitFor({state:'hidden'})
+
+      // Use the upstream reset button when dirty, grey status when unchanged.
+      const row = page.locator('.settings-surface .sp-body .row:not(.custom)').filter({
+        has:page.locator('input:not([type])')
+      }).first()
+      const editor = row.locator('.inputwrap > input:not([type])')
+      await editor.fill('33')
+      const modified = await row.evaluate(node => {
+        const button = node.querySelector('.reset-btn')
+        return {dirty:!!button, colored:button ? getComputedStyle(button).color : ''}
+      })
+      if (!modified.dirty) throw new Error('Editing a numeric setting did not activate reset indicator')
+      await row.locator('.reset-btn').click()
+      const resetState = await row.evaluate(node => {
+        const button = node.querySelector('.reset-btn')
+        const widget = node.querySelector('.widget-cell')
+        return {dirty:!!button, neutral:getComputedStyle(widget,'::after').content}
+      })
+      if (resetState.dirty || !resetState.neutral.includes('↺')) {
+        throw new Error('Reset did not restore neutral grey status: ' + JSON.stringify(resetState))
       }
       await page.screenshot({ path: `${output}/settings-mobile-${width}.png`, fullPage: true })
       await page.locator('.settings-extras-toggle').click()
