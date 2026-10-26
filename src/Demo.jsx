@@ -406,10 +406,17 @@ export default function Demo() {
     if (!catalog) return
     const stockPresetName = printerDefaultPreset(AD4) || AD4_STOCK_PROCESS
     const standardSettings = catalog.process.settingsFor(AD4_STOCK_PROCESS) || catalog.process.settingsFor(stockPresetName)
-    const filament = catalog.filament.recommendedFor(AD4)[0] || catalog.filament.listFor(AD4)[0]
+    // The upstream AD4 "first recommended filament" is not necessarily PLA.
+    // Select our known Artillery PLA Basic recipe explicitly on every fresh load.
+    const genericPla = catalog.filament.settingsFor('Generic PLA @Flashforge AD4')
+    if (!genericPla) {
+      setStatus('Artillery PLA Basic cannot be loaded: Generic PLA source preset is missing.')
+      return
+    }
+    const artillery = makeArtilleryPlaBasic(genericPla)
     setSettings(current => {
       let next = standardSettings ? applyPreset(current, applyAd4SafeProcess(standardSettings), catalog.process.keys, 'print_settings_id', AD4_SAFE_PROCESS) : current
-      if (filament) next = applyPreset(next, catalog.filament.settingsFor(filament.name), catalog.filament.keys, 'filament_settings_id', filament.name)
+      next = applyPreset(next, artillery, catalog.filament.keys, 'filament_settings_id', ARTILLERY_PLA_BASIC)
       return next
     })
   }, [catalog])
