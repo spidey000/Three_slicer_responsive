@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import './printer-manager.css'
 
 const ENDPOINT = '/api/printer'
@@ -44,6 +44,19 @@ const text = v => v == null || v === '' ? '—' : String(v)
 const statusLabel = s => ({ READY: 'Lista', PAUSED: 'Pausada', BUILDING: 'Imprimiendo', BUILDING_FROM_SD: 'Imprimiendo', PRINTING: 'Imprimiendo' })[s] || s || 'Sin conexión'
 const fileName = p => String(p).split('/').pop()
 const encode = name => encodeURIComponent(name)
+const pageSize = 10
+const printDuration = s => Number.isFinite(s) && s > 0
+  ? String(Math.floor(s / 3600)).padStart(2, '0') + ':' + String(Math.floor(s % 3600 / 60)).padStart(2, '0')
+  : '—'
+const displayDate = value => {
+  if (!value) return '—'
+  const stamp = new Date(value)
+  return Number.isNaN(stamp.getTime()) ? '—' : stamp.toLocaleDateString('es-ES')
+}
+const normalizeFile = f => typeof f === 'string'
+  ? { path: f, name: fileName(f) }
+  : { ...f, name: f.name || fileName(f.path) }
+
 
 export default function PrinterManager({ onClose }) {
   const [session, setSession] = useState(null)
@@ -54,12 +67,19 @@ export default function PrinterManager({ onClose }) {
   const [busy, setBusy] = useState('')
   const [devices, setDevices] = useState([])
   const [files, setFiles] = useState([])
+  const [fileSort, setFileSort] = useState('name')
+  const [fileDescending, setFileDescending] = useState(false)
+  const [filePage, setFilePage] = useState(1)
   const [profiles, setProfiles] = useState([])
   const [profileName, setProfileName] = useState('')
   const [profileHost, setProfileHost] = useState('')
   const [diagnostic, setDiagnostic] = useState(null)
   const [camera, setCamera] = useState('')
   const [cameraError, setCameraError] = useState('')
+  const [live, setLive] = useState(false)
+  const [timelapses, setTimelapses] = useState([])
+  const [selectedTimelapse, setSelectedTimelapse] = useState('')
+  const [frameIndex, setFrameIndex] = useState(0)
   const [selectedFile, setSelectedFile] = useState(null)
   const [timelapse, setTimelapse] = useState(null)
   const cameraUrl = useRef('')
@@ -73,24 +93,39 @@ export default function PrinterManager({ onClose }) {
     try {
       const s = await api('/session')
       setSession(s); setBridge(true); setError('')
-      const results = await Promise.allSettled([api('/status'), api('/files'), api('/profiles'), api('/timelapse')])
+      const results = await Promise.allSettled([api('/status'), api('/files?details=1'), api('/profiles'), api('/timelapse'), api('/timelapses')])
       if (results[0].status === 'fulfilled') setState(results[0].value)
       else { setState(null); setError(results[0].reason.message) }
-      setFiles(results[1].status === 'fulfilled' ? results[1].value : [])
+      setFiles(results[1].status === 'fulfilled' ? results[1].value.map(normalizeFile) : [])
+      setFilePage(1)
       setProfiles(results[2].status === 'fulfilled' ? results[2].value : [])
       if (results[3].status === 'fulfilled') setTimelapse(results[3].value)
+      if (results[4].status === 'fulfilled') setTimelapses(results[4].value)
     } catch {
-      setBridge(false); setState(null); setFiles([]); setProfiles([])
+      setBridge(false); setLive(false); setState(null); setFiles([]); setProfiles([]); setTimelapses([])
       setError('Este sitio no tiene conexión con el puente local. GitHub Pages solo permite laminar; inicia npm run local en el equipo conectado a la impresora.')
     }
   }
   useEffect(() => {
     refreshAll()
-    const timer = setInterval(() => { refreshStatus(); api('/session').then(setSession).catch(() => {}); api('/timelapse').then(setTimelapse).catch(() => {}) }, 8000)
+    const timer = setInterval(() => { refreshStatus(); api('/session').then(setSession).catch(() => {}); api('/timelapse').then(setTimelapse).catch(() => {}); api('/timelapses').then(setTimelapses).catch(() => {}) }, 8000)
     const key = e => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', key)
     return () => { clearInterval(timer); document.removeEventListener('keydown', key); if (cameraUrl.current) URL.revokeObjectURL(cameraUrl.current) }
   }, [])
+  const sortedFiles = useMemo(() => [...files].sort((a, b) => {
+    const key = fileSort === 'duration' ? 'estimated_seconds' : fileSort === 'date' ? 'uploaded_at' : 'name'
+    const left = a[key], right = b[key]
+    if (left == null && right == null) return a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })
+    if (left == null) return 1
+    if (right == null) return -1
+    const order = key === 'estimated_seconds' ? left - right : String(left).localeCompare(String(right), 'es', { sensitivity: 'base' })
+    return (fileDescending ? -order : order) || a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })
+  }), [files, fileSort, fileDescending])
+  const pages = Math.max(1, Math.ceil(sortedFiles.length / pageSize))
+  const currentPage = Math.min(filePage, pages)
+  const visibleFiles = sortedFiles.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+  const previewTimelapse = timelapses.find(item => item.id === selectedTimelapse)
   const running = Boolean(state && ACTIVE.has(state.machine_status))
   const paused = Boolean(state && PAUSED.has(state.machine_status))
   const available = bridge && Boolean(state)
@@ -112,6 +147,7 @@ export default function PrinterManager({ onClose }) {
     await run('Descubrimiento', () => api('/discover'), data => setDevices(data))
   }
   async function capture() {
+    setLive(false)
     await run('Captura', async () => {
       const response = await fetch(ENDPOINT + '/camera', { cache: 'no-store' })
       if (!response.ok) throw new Error('No se pudo obtener la fotografía')
@@ -121,6 +157,19 @@ export default function PrinterManager({ onClose }) {
       if (cameraUrl.current) URL.revokeObjectURL(cameraUrl.current)
       cameraUrl.current = url; setCamera(url); setCameraError('')
     })
+  }
+  async function deleteTimelapse(id) {
+    if (!window.confirm('¿Eliminar definitivamente las capturas de este timelapse?')) return
+    await run('Eliminar timelapse', () => post('/timelapses/delete', { id }), async () => {
+      if (selectedTimelapse === id) { setSelectedTimelapse(''); setFrameIndex(0) }
+      setTimelapses(await api('/timelapses'))
+    })
+  }
+  async function changeTimelapse(action) {
+    await run(action === 'start' ? 'Iniciar timelapse' : 'Detener timelapse',
+      () => post('/timelapse', { action }), async data => {
+        setTimelapse(data); setTimelapses(await api('/timelapses'))
+      })
   }
   async function sendFile(start) {
     if (!selectedFile) { fileInput.current?.click(); return }
@@ -165,14 +214,37 @@ export default function PrinterManager({ onClose }) {
             {devices.length ? <div className="pm-list">{devices.map(d => <div className="pm-list-item" key={d.ip}><div><strong>{d.name || 'Impresora'}</strong><small>{d.ip} · puerto {d.port}</small></div>
               <button type="button" className="pm-small" disabled={!!busy || !bridge || d.port !== 8899 || (session?.host === d.ip && !profileSelection)} onClick={() => run('Conectar', () => post('/selection', { host: d.ip }), async () => { setCamera(''); await refreshAll() })}>{session?.host === d.ip && !profileSelection ? 'Conectada' : 'Conectar'}</button></div>)}</div> : <p className="pm-empty">Pulsa Buscar para localizar impresoras.</p>}
           </Card>
-          <Card icon="file" title="Archivos de la impresora" right={<button type="button" className="pm-small" disabled={!bridge || !!busy} onClick={() => run('Actualizar archivos', () => api('/files'), setFiles)}>Actualizar</button>}>
-            {files.length ? <div className="pm-list">{files.map(f => <div className="pm-list-item" key={f}><div><strong title={f}>{fileName(f)}</strong><small>{f}</small></div>
-              <button className="pm-small" type="button" disabled={!available || running || paused || !!busy} onClick={() => action('Imprimir archivo', { action: 'print', file: f }, '¿Imprimir el archivo almacenado ' + fileName(f) + '? Comprueba el material y la impresora.') }><Icon name="play"/> Imprimir</button></div>)}</div> : <p className="pm-empty">{bridge ? 'No se han encontrado archivos o aún no se ha consultado el almacenamiento.' : 'Requiere el puente local.'}</p>}
+          <Card icon="file" title="Archivos de la impresora" right={<button type="button" className="pm-small" disabled={!bridge || !!busy} onClick={() => run('Actualizar archivos', () => api('/files?details=1'), data => { setFiles(data.map(normalizeFile)); setFilePage(1) })}>Actualizar</button>}>
+            <div className="pm-file-toolbar">
+              <label htmlFor="pm-file-sort">Ordenar</label>
+              <select id="pm-file-sort" value={fileSort} onChange={e => { setFileSort(e.target.value); setFilePage(1) }}>
+                <option value="name">Nombre</option><option value="duration">Duración</option><option value="date">Fecha de subida</option>
+              </select>
+              <button className="pm-sort-direction" type="button" aria-label={fileDescending ? 'Orden ascendente' : 'Orden descendente'} title={fileDescending ? 'Orden descendente' : 'Orden ascendente'} onClick={() => { setFileDescending(v => !v); setFilePage(1) }}>{fileDescending ? '↓' : '↑'}</button>
+              <span className="pm-file-total">{files.length} archivos</span>
+            </div>
+            {files.length ? <>
+              <div className="pm-list pm-file-list">{visibleFiles.map(f => <div className="pm-list-item" key={f.path}><div className="pm-file-info"><strong title={f.name}>{f.name}</strong>
+                <small>Duración {printDuration(f.estimated_seconds)} · {f.hotend ?? '—'}° / {f.bed ?? '—'}°{f.uploaded_at ? ' · ' + displayDate(f.uploaded_at) : ''}</small></div>
+                <button className="pm-small" type="button" disabled={!available || running || paused || !!busy} onClick={() => action('Imprimir archivo', { action: 'print', file: f.path }, '¿Imprimir el archivo almacenado ' + f.name + '? Comprueba el material y la impresora.') }><Icon name="play"/> Imprimir</button></div>)}</div>
+              <nav className="pm-pagination" aria-label="Páginas de archivos">
+                <span>{(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, files.length)} de {files.length}</span>
+                <div><button type="button" disabled={currentPage <= 1} onClick={() => setFilePage(currentPage - 1)} aria-label="Página anterior">‹</button>
+                <span>Página {currentPage} / {pages}</span>
+                <button type="button" disabled={currentPage >= pages} onClick={() => setFilePage(currentPage + 1)} aria-label="Página siguiente">›</button></div>
+              </nav>
+              <p className="pm-subtle">Duración y temperaturas del archivo, no valores actuales. «—» indica metadatos no disponibles.</p>
+            </> : <p className="pm-empty">{bridge ? 'No se han encontrado archivos en la impresora.' : 'Requiere el puente local.'}</p>}
           </Card>
-          <Card icon="camera" title="Cámara" right={<button className="pm-small" type="button" disabled={!bridge || !!busy} onClick={capture}><Icon name="camera"/> Capturar</button>}>
-            {camera ? <img className="pm-camera-image" src={camera} alt="Última captura real de la cámara de la impresora"/> : <div className="pm-camera-empty"><Icon name="camera" size={32}/><span>Sin fotografía · Captura bajo demanda</span></div>}
-            {cameraError && <p className="pm-subtle">{cameraError}</p>}
-            <p className="pm-subtle">Fotograma JPEG, no vídeo en directo.</p>
+          <Card icon="camera" title="Cámara" right={<div className="pm-inline"><button className="pm-small" type="button" disabled={!bridge || !!busy} onClick={capture}><Icon name="camera"/> Capturar</button>
+            <button className={'pm-small ' + (live ? 'pm-live-button' : '')} type="button" disabled={!bridge} onClick={() => { setCameraError(''); setLive(v => !v) }}>{live ? 'Detener vídeo' : 'En directo'}</button></div>}>
+            <div className="pm-camera-frame">
+              {live ? <><img className="pm-camera-image" src={ENDPOINT + '/camera/live'} alt="Vídeo MJPEG en directo de la cámara Adventurer 4" onError={() => { setCameraError('No se puede abrir el vídeo MJPEG. Comprueba la cámara y el puente.'); setLive(false) }}/><span className="pm-live-indicator">● EN DIRECTO</span></> :
+                camera ? <img className="pm-camera-image" src={camera} alt="Última captura de la cámara"/> :
+                <div className="pm-camera-empty"><Icon name="camera" size={32}/><span>Pulsa «En directo» o «Capturar»</span></div>}
+            </div>
+            {cameraError && <p className="pm-subtle" role="alert">{cameraError}</p>}
+            <p className="pm-subtle">{live ? 'Streaming MJPEG mediante el puente protegido.' : 'El vídeo solo se conecta cuando lo activas.'}</p>
           </Card>
           <Card icon="fan" title="Ventilador de capa">
             <p className="pm-subtle">El CLI permite únicamente encender al 100% o apagar el ventilador de capa. No controla el ventilador de la carcasa ni informa de su velocidad.</p>
@@ -184,11 +256,25 @@ export default function PrinterManager({ onClose }) {
               <button key={kind} disabled={!bridge || !!busy} onClick={() => run(label, () => api('/diagnostics?kind=' + kind), setDiagnostic)}>{label}</button>)}</div>
             {diagnostic && <pre className="pm-diagnostic">{typeof diagnostic.output === 'string' ? diagnostic.output : JSON.stringify(diagnostic.output, null, 2)}</pre>}
           </Card>
-          <Card icon="camera" title="Timelapse">
-            <p className="pm-subtle">Serie de 20 capturas JPEG, separadas 10 segundos. Guardadas en el equipo del puente, no por capas.</p>
-            <p className="pm-subtle">Capturas: {timelapse?.frames ?? 0} · {timelapse?.running ? 'En curso' : 'Detenido'}</p>
-            <div className="pm-actions"><button disabled={!bridge || !!busy || timelapse?.running} onClick={() => run('Iniciar timelapse', () => post('/timelapse', { action: 'start' }), setTimelapse)}>Iniciar</button>
-              <button disabled={!bridge || !!busy || !timelapse?.running} onClick={() => run('Detener timelapse', () => post('/timelapse', { action: 'stop' }), setTimelapse)}>Detener</button></div>
+          <Card icon="camera" title="Timelapses">
+            <p className="pm-subtle">Secuencias locales de hasta 20 fotos, una cada 10 segundos. Permanecen guardadas hasta que las elimines.</p>
+            <p className="pm-subtle">Sesión actual: {timelapse?.frames ?? 0} fotogramas · {timelapse?.running ? 'Grabando' : 'Detenida'}</p>
+            <div className="pm-actions"><button disabled={!bridge || !!busy || timelapse?.running} onClick={() => changeTimelapse('start')}>Iniciar</button>
+              <button disabled={!bridge || !!busy || !timelapse?.running} onClick={() => changeTimelapse('stop')}>Detener</button></div>
+            <div className="pm-timelapse-heading"><strong>Grabaciones ({timelapses.length})</strong><button type="button" className="pm-small" disabled={!bridge} onClick={() => api('/timelapses').then(setTimelapses).catch(e => setError(e.message))}><Icon name="refresh"/> Actualizar</button></div>
+            {timelapses.length ? <div className="pm-list pm-timelapse-list">{timelapses.map(item => <div className="pm-list-item" key={item.id}>
+              <div><strong>{displayDate(item.created_at)} · {item.id.slice(9, 11)}:{item.id.slice(11, 13)}</strong><small>{item.frames} fotogramas · {item.running ? 'En curso' : 'Finalizado'}</small></div>
+              <div className="pm-inline"><button type="button" className="pm-small" disabled={!item.frames} onClick={() => { setSelectedTimelapse(selectedTimelapse === item.id ? '' : item.id); setFrameIndex(0) }}>{selectedTimelapse === item.id ? 'Cerrar' : 'Ver'}</button>
+                <a className={'pm-small pm-download ' + (!item.frames ? 'pm-disabled' : '')} href={item.frames ? ENDPOINT + '/timelapses/download?id=' + encode(item.id) : undefined} aria-disabled={!item.frames}>ZIP</a>
+                <button type="button" className="pm-small pm-danger" disabled={!!busy || item.running} onClick={() => deleteTimelapse(item.id)} aria-label={'Eliminar timelapse del ' + displayDate(item.created_at)}>×</button></div>
+            </div>)}</div> : <p className="pm-empty">Aún no hay timelapses guardados.</p>}
+            {previewTimelapse?.frames > 0 && <div className="pm-timelapse-preview">
+              <img src={ENDPOINT + '/timelapses/frame?id=' + encode(previewTimelapse.id) + '&index=' + Math.min(frameIndex, previewTimelapse.frames - 1)} alt={'Fotograma ' + (Math.min(frameIndex, previewTimelapse.frames - 1) + 1) + ' del timelapse'}/>
+              <div className="pm-pagination"><span>Foto {Math.min(frameIndex, previewTimelapse.frames - 1) + 1} / {previewTimelapse.frames}</span>
+                <div><button type="button" onClick={() => setFrameIndex(i => Math.max(0, i - 1))} disabled={frameIndex === 0}>‹</button>
+                  <button type="button" onClick={() => setFrameIndex(i => Math.min(previewTimelapse.frames - 1, i + 1))} disabled={frameIndex >= previewTimelapse.frames - 1}>›</button></div>
+              </div>
+            </div>}
           </Card>
           <Card icon="bell" title="Notificaciones del CLI">
             <p className="pm-subtle">Avisos de escritorio en el ordenador Linux del puente (notify-send): pausa, desconexión, impresión y listo. No son notificaciones push al móvil.</p>
