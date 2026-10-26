@@ -374,6 +374,7 @@ export default function Demo() {
   const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 767px)').matches)
   const [drawer, setDrawer] = useState(false)
   const [filtersExpanded, setFiltersExpanded] = useState(false)
+  const [selectedSetting, setSelectedSetting] = useState(null)
   const [playbackExpanded, setPlaybackExpanded] = useState(() => !window.matchMedia('(max-width: 767px)').matches)
   const [sliceRequest, setSliceRequest] = useState(0)
   const [catalog, setCatalog] = useState(null)
@@ -721,6 +722,10 @@ export default function Demo() {
           if (input.style.width !== wanted) input.style.width = wanted
         })
         resizeFields()
+        root.querySelectorAll('.sp-body .lbl-link').forEach(button => {
+          if (button.getAttribute('aria-haspopup') !== 'dialog') button.setAttribute('aria-haspopup', 'dialog')
+          if (button.getAttribute('title') !== 'Explain this parameter') button.setAttribute('title', 'Explain this parameter')
+        })
         if (!root.host.dataset.ad4CompactBound) {
           root.addEventListener('input', event => {
             const target = event.target
@@ -784,7 +789,7 @@ export default function Demo() {
 
   useEffect(() => {
     // Freshly opened drawers always start with the advanced search/presets collapsed.
-    if (!drawer) setFiltersExpanded(false)
+    if (!drawer) { setFiltersExpanded(false); setSelectedSetting(null) }
   }, [drawer])
 
   useEffect(() => {
@@ -794,10 +799,16 @@ export default function Demo() {
 
   useEffect(() => {
     if (!drawer) return
-    const close = (event) => { if (event.key === 'Escape') { if (saveDialog) setSaveDialog(null); else setDrawer(false) } }
+    const close = (event) => {
+      if (event.key === 'Escape') {
+        if (selectedSetting) setSelectedSetting(null)
+        else if (saveDialog) setSaveDialog(null)
+        else setDrawer(false)
+      }
+    }
     window.addEventListener('keydown', close)
     return () => window.removeEventListener('keydown', close)
-  }, [drawer, saveDialog])
+  }, [drawer, saveDialog, selectedSetting])
 
   useEffect(() => {
     if (saveDialog) profileNameRef.current?.focus()
@@ -1131,8 +1142,25 @@ export default function Demo() {
         </div>
         </div>
         {profileNotice && <p className="profile-notice" role="status">{profileNotice}</p>}
-        <div className="settings-surface"><SettingsPanel embedded settings={settings} setSettings={setSettings} {...panelData} /></div>
+        <div className="settings-surface"><SettingsPanel embedded settings={settings} setSettings={setSettings}
+          onOptionOpen={setSelectedSetting} {...panelData} /></div>
         <button className="drawer-slice" onClick={() => { setDrawer(false); sliced ? sendPrint(true) : setSliceRequest(value => value + 1) }}>{sliced ? 'Print' : 'Slice model'}</button>
+        {selectedSetting && <div className="setting-help-backdrop"
+          onClick={() => setSelectedSetting(null)} role="presentation">
+          <section className="setting-help-popover" role="dialog" aria-modal="false"
+            aria-labelledby="setting-help-title" aria-describedby="setting-help-description">
+            <div className="setting-help-header">
+              <span>PARAMETER GUIDE</span>
+              <button type="button" onClick={() => setSelectedSetting(null)}
+                aria-label="Close parameter help" autoFocus>×</button>
+            </div>
+            <h3 id="setting-help-title">{schema[selectedSetting]?.label || schema[selectedSetting]?.full_label || selectedSetting.replaceAll('_', ' ')}</h3>
+            <p id="setting-help-description">{schema[selectedSetting]?.tooltip?.trim()
+              || schema[selectedSetting]?.description?.trim()
+              || `Controls the ${schema[selectedSetting]?.label || selectedSetting.replaceAll('_', ' ')} setting used to slice the model. Adjusting it changes the corresponding print instructions generated in G-code.`}</p>
+            <span className="setting-help-hint">Tap this explanation or anywhere outside to close</span>
+          </section>
+        </div>}
       </section>
       {saveDialog && <div className="profile-save-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setSaveDialog(null) }}>
         <form className="profile-save-dialog" role="dialog" aria-modal="true" aria-labelledby="profile-save-title" onSubmit={saveCurrentProfile}>
