@@ -248,6 +248,35 @@ async function checkWidth(width) {
           && getComputedStyle(root.querySelector('.sp-builder')).display !== 'none'
       })
       if (!visibleFilters) throw new Error('Search/category filters missing when accordion expanded')
+      // Regression: both actual HTML selects must be fully displayed, not merely
+      // present in the DOM, when the green-tinted accordion is expanded.
+      await page.waitForFunction(() => document.querySelector('#ad4-process-select')?.options.length > 2
+        && document.querySelector('#ad4-material-select')?.options.length > 2)
+      const profileGeometry = await page.evaluate(() => {
+        const panel = document.querySelector('#settings-extras')
+        const rect = panel.getBoundingClientRect()
+        const ids = ['ad4-process-select', 'ad4-material-select']
+        const selects = ids.map(id => {
+          const node = document.getElementById(id)
+          const b = node.getBoundingClientRect()
+          const style = getComputedStyle(node)
+          return { id, value:node.value, options:node.options.length, display:style.display,
+            visible:b.width > 110 && b.height >= 38 && style.visibility === 'visible'
+              && style.display !== 'none' && b.left >= rect.left - 2
+              && b.right <= rect.right + 2 && b.top >= rect.top - 2
+              && b.bottom <= rect.bottom + 2,
+            rect:{left:b.left,right:b.right,top:b.top,bottom:b.bottom} }
+        })
+        const style = getComputedStyle(panel)
+        return { panel:{top:rect.top,bottom:rect.bottom,height:rect.height},
+          tint:style.backgroundColor, scrollHeight:panel.scrollHeight,
+          clientHeight:panel.clientHeight, selects }
+      })
+      if (profileGeometry.panel.height < 130 || profileGeometry.selects.some(item => !item.visible)
+        || profileGeometry.tint === 'rgba(0, 0, 0, 0)') {
+        throw new Error('Expanded profile dropdowns clipped or hidden: ' + JSON.stringify(profileGeometry))
+      }
+      await page.screenshot({ path: `${output}/profiles-expanded-mobile-${width}.png`, fullPage: true })
       await page.locator('.settings-surface .sp-search').fill('layer_height')
       await page.locator('.settings-extras-toggle').click()
       const afterSearchCollapse = await page.evaluate(() => {
