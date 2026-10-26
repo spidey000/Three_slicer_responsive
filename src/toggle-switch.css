@@ -1,0 +1,26 @@
+/* Compact accessible switch in the shadcn/ui design language, themed to ThreeSlicer. */
+.ui-toggle { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-width:0;
+  border:1px solid #394956; border-radius:11px; padding:7px 9px; background:#212b35;
+  color:#d9e4eb; cursor:pointer; user-select:none; transition:background .16s,border-color .16s; }
+.ui-toggle:hover { border-color:#698446; background:#29353d; }
+.ui-toggle:has(input:checked) { border-color:#567b32; background:#263625; }
+.ui-toggle input { position:absolute; width:1px; height:1px; overflow:hidden; opacity:0; }
+.ui-toggle input:focus-visible + .ui-toggle-track { outline:2px solid #a3e635; outline-offset:3px; }
+.ui-toggle input:disabled ~ * { opacity:.45; }
+.ui-toggle-track { flex:0 0 34px; width:34px; height:20px; display:flex; align-items:center; padding:2px;
+  background:#394752; border:1px solid #718190; border-radius:999px; transition:background .16s,border-color .16s; }
+.ui-toggle-thumb { display:block; width:14px; height:14px; border-radius:50%; background:#f2f5f7;
+  box-shadow:0 1px 3px #0008; transform:translateX(0); transition:transform .16s; }
+.ui-toggle input:checked + .ui-toggle-track { background:#a3e635; border-color:#a3e635; }
+.ui-toggle input:checked + .ui-toggle-track .ui-toggle-thumb { transform:translateX(14px); background:#182311; }
+.ui-toggle-caption { font-size:11px; font-weight:700; letter-spacing:-.01em; white-space:nowrap; }
+@media (max-width:767px) {
+  .ui-toggle { gap:5px; padding:5px 4px; border-radius:10px; }
+  .ui-toggle-track { flex-basis:29px; width:29px; height:18px; }
+  .ui-toggle-thumb { width:12px; height:12px; }
+  .ui-toggle input:checked + .ui-toggle-track .ui-toggle-thumb { transform:translateX(11px); }
+  .ui-toggle-caption { font-size:9px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .ui-toggle, .ui-toggle-track, .ui-toggle-thumb { transition:none; }
+}
