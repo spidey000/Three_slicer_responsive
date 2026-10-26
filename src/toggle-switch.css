@@ -97,7 +97,7 @@
   .mobile-nav .ui-toggle input:checked + .ui-toggle-track .ui-toggle-caption { inset-inline: 4px 30px; }
 }
 @media (max-width: 360px) {
-  .mobile-nav .ui-toggle-caption { font-size: 9px; }
+  .mobile-nav .ui-toggle-caption { font-size: 8.5px; letter-spacing: -.03em; }
   .mobile-nav .ui-toggle-thumb { width: 22px; height: 22px; top: 6px; }
   .mobile-nav .ui-toggle input:checked + .ui-toggle-track .ui-toggle-thumb { left: calc(100% - 27px); }
   .mobile-nav .ui-toggle-caption { inset-inline: 27px 3px; }
