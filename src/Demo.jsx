@@ -1070,7 +1070,18 @@ export default function Demo() {
         <header className="drawer-header"><div><span className="drawer-kicker">Print configuration</span><strong>Slicing settings</strong><small>Presets, material and advanced parameters</small></div>
           <button className="close-drawer" onClick={() => setDrawer(false)} aria-label="Close settings">×</button></header>
         <button type="button" className="settings-extras-toggle" aria-expanded={filtersExpanded}
-          aria-controls="settings-extras" onClick={() => setFiltersExpanded(value => !value)}>
+          aria-controls="settings-extras" onClick={() => {
+            if (filtersExpanded) {
+              // A collapsed search must restore the ordinary category tabs.
+              const search = document.querySelector('.settings-surface .sp-embedded')?.shadowRoot?.querySelector('.sp-search')
+              if (search?.value) {
+                const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+                setter?.call(search, '')
+                search.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
+              }
+            }
+            setFiltersExpanded(value => !value)
+          }}>
           <span className="settings-extras-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
               <path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="#1c232b"/><circle cx="15" cy="17" r="3" fill="#1c232b"/>
