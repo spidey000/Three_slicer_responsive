@@ -18,6 +18,7 @@ import {
   makeArtilleryPlaBasic,
 } from './profileLibrary.js'
 import { fullPreviewLayer, getPreviewControls, previewMoveCount, scrubPreviewMove, selectPreviewLayer } from './previewBridge.js'
+import { checkArtilleryHeating } from './temperatureSafety.js'
 
 // Keep this hook adapter at module scope: three-slicer-viewer calls it as a hook.
 const slicer = (deps) => useSlicer({ ...deps, makeWorker: makeSlicerWorker })
@@ -401,6 +402,7 @@ export default function Demo() {
   const playback = useRef({ layer: 0, move: 0, last: 0, remainder: 0, speed: 1, count: 0, waiting: false })
   const [preview, setPreview] = useState({ mode: 'prepare', count: 0, layer: 0, move: 0, max: 0, single: false, playing: false, speed: 1, hasMoves: false, plate: 0 })
   const previewVisible = preview.mode === 'preview' && preview.count > 0
+  const materialReady = Boolean(catalog && settings.filament_settings_id)
 
   useEffect(() => {
     if (!catalog) return
@@ -422,10 +424,10 @@ export default function Demo() {
   }, [catalog])
   useEffect(() => { setSliced(null) }, [settings, plateSettings, objects])
   useEffect(() => {
-    if (!autoSlice || !objects || sliced) return
+    if (!autoSlice || !objects || sliced || !materialReady) return
     const timer = setTimeout(() => setSliceRequest(value => value + 1), 650)
     return () => clearTimeout(timer)
-  }, [autoSlice, objects, settings, plateSettings, sliced])
+  }, [autoSlice, objects, settings, plateSettings, sliced, materialReady])
   useEffect(() => {
     const refresh = () => fetch('/api/printer/status').then(r => r.json()).then(data =>
       setPrinterState(data.machine_status ?? data.status ?? 'Connected')).catch(() => setPrinterState('Disconnected'))
@@ -444,6 +446,12 @@ export default function Demo() {
 
   const sendPrint = async (start) => {
     if (!sliced || sending) return
+    if (!materialReady) { setStatus('Select a filament profile before printing.'); return }
+    const heatingWarnings = checkArtilleryHeating(sliced.gcode, settings.filament_settings_id)
+    if (heatingWarnings.length) {
+      setStatus('Print blocked: generated G-code exceeds Artillery PLA Basic temperatures (' + heatingWarnings.join('; ') + ').')
+      return
+    }
     setSending(true)
     try {
       const response = await fetch(`/api/printer/jobs?start=${start ? 'true' : 'false'}`, {
@@ -1002,7 +1010,7 @@ export default function Demo() {
         {sliced ? <div className="nav-print-group" role="group" aria-label="Print actions">
           <button className="nav-slice" disabled={sending} onClick={() => sendPrint(true)}>{sending ? 'Sending…' : 'Print'}</button>
           <button className="nav-send" disabled={sending} onClick={() => sendPrint(false)}>Upload only</button>
-        </div> : <button className="nav-slice" disabled={!objects} onClick={() => setSliceRequest(value => value + 1)}>Slice</button>}
+        </div> : <button className="nav-slice" disabled={!objects || !materialReady} onClick={() => setSliceRequest(value => value + 1)}>Slice</button>}
       </nav> : <button type="button" className="desktop-profile-launcher" onClick={() => setDrawer(true)}
         aria-label="Open custom process and filament profiles">Presets &amp; settings</button>}
       {drawer && <div className="drawer-scrim" onClick={() => { if (!saveDialog) setDrawer(false) }} />}
