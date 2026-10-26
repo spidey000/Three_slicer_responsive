@@ -12,6 +12,7 @@ import { makeCfg, disabledKeys } from 'three-slicer/toggle'
 import './step_loader.js'
 import PrinterManager from './PrinterManager.jsx'
 import ToggleSwitch from './ToggleSwitch.jsx'
+import { compactSettingsCss } from './compactSettingsCss.js'
 import { AD4_STOCK_PROCESS, AD4_SAFE_PROCESS, AD4_SAFE_PROCESS_OVERRIDES, applyAd4SafeMachineLimits, applyAd4SafeProcess } from './ad4SafeProfile.js'
 import {
   SAVE_PROCESS_OPTION, SAVE_FILAMENT_OPTION, ARTILLERY_PLA_BASIC,
@@ -372,6 +373,7 @@ export default function Demo() {
   const [plateSettings, setPlateSettings] = useState({})
   const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 767px)').matches)
   const [drawer, setDrawer] = useState(false)
+  const [filtersExpanded, setFiltersExpanded] = useState(false)
   const [playbackExpanded, setPlaybackExpanded] = useState(() => !window.matchMedia('(max-width: 767px)').matches)
   const [sliceRequest, setSliceRequest] = useState(0)
   const [catalog, setCatalog] = useState(null)
@@ -700,6 +702,36 @@ export default function Demo() {
         style.textContent = responsiveSettingsCss
         root.append(style)
       }
+      // This ShadowHost has an open shadow root; style only the separate web drawer,
+      // leaving all embedded controls in the viewer and printer cards untouched.
+      if (root.host.closest('.settings-surface')) {
+        root.host.classList.toggle('ad4-filters-open',
+          !!root.host.closest('.settings-drawer.filters-expanded'))
+        if (!root.querySelector('[data-ad4-compact-settings]')) {
+          const compact = document.createElement('style')
+          compact.dataset.ad4CompactSettings = ''
+          compact.textContent = compactSettingsCss
+          root.append(compact)
+        }
+        // Five visible characters for short values; grow to at most 18 for
+        // strings/numbers with longer values. Native text inputs scroll for more.
+        const resizeFields = () => root.querySelectorAll('.row .inputwrap > input:not([type])').forEach(input => {
+          const length = Math.max(5, Math.min(18, String(input.value).length + 1))
+          const wanted = 'calc(' + length + 'ch + 16px)'
+          if (input.style.width !== wanted) input.style.width = wanted
+        })
+        resizeFields()
+        if (!root.host.dataset.ad4CompactBound) {
+          root.addEventListener('input', event => {
+            const target = event.target
+            if (target?.matches?.('.row .inputwrap > input:not([type])')) {
+              const length = Math.max(5, Math.min(18, String(target.value).length + 1))
+              target.style.width = 'calc(' + length + 'ch + 16px)'
+            }
+          })
+          root.host.dataset.ad4CompactBound = 'true'
+        }
+      }
       const search = root.querySelector('.sp-search')
       if (search && search.placeholder !== 'Search settings by name or key…') search.placeholder = 'Search settings by name or key…'
       setText(root.querySelector('.sp-builder > span'), 'Category')
@@ -749,6 +781,16 @@ export default function Demo() {
     })
     return () => { live = false }
   }, [])
+
+  useEffect(() => {
+    // Freshly opened drawers always start with the advanced search/presets collapsed.
+    if (!drawer) setFiltersExpanded(false)
+  }, [drawer])
+
+  useEffect(() => {
+    const host = document.querySelector('.settings-surface .sp-embedded')
+    host?.classList.toggle('ad4-filters-open', filtersExpanded)
+  }, [filtersExpanded, drawer])
 
   useEffect(() => {
     if (!drawer) return
@@ -1023,10 +1065,22 @@ export default function Demo() {
       </nav> : <button type="button" className="desktop-profile-launcher" onClick={() => setDrawer(true)}
         aria-label="Open custom process and filament profiles">Presets &amp; settings</button>}
       {drawer && <div className="drawer-scrim" onClick={() => { if (!saveDialog) setDrawer(false) }} />}
-      <section className={`settings-drawer${drawer ? ' is-open' : ''}`} role="dialog" aria-modal="true" aria-label="Slicing settings">
+      <section className={`settings-drawer${drawer ? ' is-open' : ''}${filtersExpanded ? ' filters-expanded' : ''}`} role="dialog" aria-modal="true" aria-label="Slicing settings">
         <div className="drawer-handle" />
         <header className="drawer-header"><div><span className="drawer-kicker">Print configuration</span><strong>Slicing settings</strong><small>Presets, material and advanced parameters</small></div>
           <button className="close-drawer" onClick={() => setDrawer(false)} aria-label="Close settings">×</button></header>
+        <button type="button" className="settings-extras-toggle" aria-expanded={filtersExpanded}
+          aria-controls="settings-extras" onClick={() => setFiltersExpanded(value => !value)}>
+          <span className="settings-extras-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+              <path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="#1c232b"/><circle cx="15" cy="17" r="3" fill="#1c232b"/>
+            </svg>
+          </span>
+          <span className="settings-extras-text"><strong>Profiles &amp; filters</strong>
+            <small>Process, material, search &amp; category</small></span>
+          <span className="settings-extras-chevron" aria-hidden="true">{filtersExpanded ? '⌃' : '⌄'}</span>
+        </button>
+        <div className="settings-extras" id="settings-extras" hidden={!filtersExpanded}>
         <div className="profile-selects">
           <div className="profile-picker">
             <label htmlFor="ad4-process-select">Process</label>
@@ -1063,6 +1117,7 @@ export default function Demo() {
               <button type="button" className="profile-delete" onClick={() => deleteSavedProfile('filament')}>Delete</button>
             </div>}
           </div>
+        </div>
         </div>
         {profileNotice && <p className="profile-notice" role="status">{profileNotice}</p>}
         <div className="settings-surface"><SettingsPanel embedded settings={settings} setSettings={setSettings} {...panelData} /></div>
