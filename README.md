@@ -82,6 +82,10 @@ Cloudflare guides and docs/REMOTE_ACCESS.md for exact configuration.
 
 ---
 
+## Adventurer 4 job thumbnails and print metadata
+
+The slicer supplies its actual kernel print-time estimate and filament usage as G-code comments. Before upload, it renders an 80×60 model PNG using ThreeSlicer's existing off-screen plate renderer and embeds it in G-code; FFAD4Manager converts that PNG into the legacy GX 80×60 grayscale BMP that the Adventurer 4 touchscreen can use. Normal G-code export is configured to carry 80×60 PNG thumbnails as well. Additional layer, shell, speed and heater metadata are informational only; executable G-code commands are unchanged. Missing estimates are not invented. This depends on the paired [FFAD4Manager GX converter](https://github.com/spidey000/FFAD4Manager/blob/main/docs/AD4_GX_METADATA.md). The screen result still requires hardware testing on the actual AD4 firmware.
+
 # ThreeSlicer Responsive — Adventurer 4 Web Slicer
 
 A responsive browser-based slicer and Adventurer 4 management UI powered by [Three Slicer](https://github.com/kimgh06/Three_Slicer) and [FFAD4Manager](https://github.com/spidey000/FFAD4Manager). Its **recommended installation is a private, worldwide-accessible HTTPS service**: Cloudflare Access authenticates the user, Cloudflare Tunnel connects to an always-on home Linux host, and the loopback bridge validates Cloudflare Access JWTs before accessing the printer.
