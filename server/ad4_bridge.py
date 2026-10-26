@@ -24,8 +24,10 @@ from urllib.parse import parse_qs, unquote, urlsplit
 
 if __package__:
     from .cloudflare_access import load_access_config, verify_access_jwt, _jwks_client
+    from .timelapse_service import TimelapseService
 else:
     from cloudflare_access import load_access_config, verify_access_jwt, _jwks_client
+    from timelapse_service import TimelapseService
 
 ACCESS_CONFIG = load_access_config(os.environ)
 
@@ -40,12 +42,11 @@ PROFILE_NAME = re.compile(r'[A-Za-z0-9][A-Za-z0-9_. -]{0,63}\Z')
 STATE_LOCK = threading.RLock()
 SELECTED = {'host': None, 'profile': None}
 DISCOVERED = {}
-WORKERS = {'timelapse': None, 'notifications': None}
-TIMELAPSE_DIR = None
+WORKERS = {'notifications': None}
 DATA_DIR = Path(os.environ.get('AD4_DATA_DIR', Path(os.environ.get('XDG_DATA_HOME', Path.home() / '.local/share')) / 'three-slicer-ad4'))
 TIMELAPSE_ROOT = DATA_DIR / 'timelapses'
 FILE_METADATA_PATH = DATA_DIR / 'uploaded-files.json'
-TIMELAPSE_ID = re.compile(r'\d{8}T\d{6}-[0-9a-f]{8}\Z')
+TIMELAPSES = TimelapseService(TIMELAPSE_ROOT)
 
 
 
@@ -95,10 +96,23 @@ def worker_running(name):
 
 
 def timelapse_state():
-    with STATE_LOCK:
-        folder = TIMELAPSE_DIR
-    return {'running': worker_running('timelapse'),
-            'frames': len(list(folder.glob('frame-*.jpg'))) if folder and folder.is_dir() else 0}
+    return TIMELAPSES.state()
+
+
+def selected_status_reader(argv):
+    """Pin a session to its initial printer, even if the UI selection changes."""
+    def get_status():
+        result = subprocess.run([*argv, 'status', '--json'], capture_output=True, text=True,
+                                timeout=15, check=False)
+        if result.returncode:
+            raise RuntimeError('Printer status unavailable')
+        return json.loads(result.stdout)
+    return get_status
+
+
+def start_print_timelapse():
+    argv = cli_argv()
+    return TIMELAPSES.start(argv, selected_status_reader(argv), auto=True)
 
 
 def _metadata_scope():
@@ -207,46 +221,23 @@ def printer_file_details():
 
 
 def timelapse_folder(value):
-    if not isinstance(value, str) or not TIMELAPSE_ID.fullmatch(value):
-        raise ValueError('Invalid timelapse identifier')
-    folder = TIMELAPSE_ROOT / value
-    if not folder.is_dir() or folder.is_symlink():
-        raise ValueError('Timelapse not found')
-    return folder
+    return TIMELAPSES.folder_for(value)
 
 
 def timelapse_frames(folder):
-    return sorted(f for f in folder.glob('frame-*.jpg') if f.is_file() and not f.is_symlink())
+    from_timelapse = folder.glob('frame-*.jpg')
+    return sorted(f for f in from_timelapse if f.is_file() and not f.is_symlink())
 
 
 def list_timelapses():
-    if not TIMELAPSE_ROOT.is_dir():
-        return []
-    with STATE_LOCK:
-        active = TIMELAPSE_DIR
-    records = []
-    for folder in TIMELAPSE_ROOT.iterdir():
-        if not folder.is_dir() or folder.is_symlink() or not TIMELAPSE_ID.fullmatch(folder.name):
-            continue
-        frames = timelapse_frames(folder)
-        records.append({'id': folder.name, 'created_at': datetime.fromtimestamp(
-            folder.stat().st_mtime, timezone.utc).isoformat(),
-            'frames': len(frames), 'running': folder == active and worker_running('timelapse')})
-    return sorted(records, key=lambda item: item['id'], reverse=True)
+    return TIMELAPSES.list()
 
 
 def cleanup():
-    with STATE_LOCK:
-        workers = list(WORKERS.values())
-        folder = TIMELAPSE_DIR
-    for worker in workers:
-        if worker and worker.poll() is None:
-            worker.terminate()
-            try:
-                worker.wait(timeout=3)
-            except subprocess.TimeoutExpired:
-                worker.kill()
-    # Captures stay available until explicitly deleted from the gallery.
+    TIMELAPSES.shutdown()
+    worker = WORKERS.get('notifications')
+    if worker and worker.poll() is None:
+        worker.terminate()
 
 
 atexit.register(cleanup)
@@ -275,24 +266,51 @@ class Handler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
-    def download_timelapse(self, folder):
-        with tempfile.TemporaryFile() as output:
-            with zipfile.ZipFile(output, 'w', compression=zipfile.ZIP_STORED) as archive:
-                for frame in timelapse_frames(folder):
-                    archive.write(frame, arcname=frame.name)
-                manifest = folder / 'timelapse.jsonl'
-                if manifest.is_file() and not manifest.is_symlink():
-                    archive.write(manifest, arcname=manifest.name)
-            size = output.tell()
-            output.seek(0)
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/zip')
-            self.send_header('Content-Disposition', 'attachment; filename="timelapse-' + folder.name + '.zip"')
-            self.send_header('Content-Length', str(size))
-            self.send_header('Cache-Control', 'no-store')
-            self.send_header('X-Content-Type-Options', 'nosniff')
-            self.end_headers()
-            shutil.copyfileobj(output, self.wfile, length=64 * 1024)
+    def send_video(self, folder, download=False):
+        """Authenticated MP4 response with seek support for HTML5 <video>."""
+        video = folder / 'timelapse.mp4'
+        if not video.is_file() or video.is_symlink():
+            raise ValueError('MP4 not ready; recording/encoding may still be in progress')
+        size = video.stat().st_size
+        start, end = 0, size - 1
+        range_header = self.headers.get('Range')
+        if range_header:
+            match = re.fullmatch(r'bytes=(\d*)-(\d*)', range_header.strip())
+            if not match or (not match.group(1) and not match.group(2)):
+                self.send_error(416)
+                return
+            if not match.group(1):
+                suffix = int(match.group(2))
+                start = max(0, size - suffix)
+            else:
+                start = int(match.group(1))
+                if match.group(2):
+                    end = min(size - 1, int(match.group(2)))
+            if start >= size or start > end:
+                self.send_response(416)
+                self.send_header('Content-Range', 'bytes */' + str(size))
+                self.end_headers()
+                return
+        self.send_response(206 if range_header else 200)
+        self.send_header('Content-Type', 'video/mp4')
+        self.send_header('Content-Length', str(end - start + 1))
+        self.send_header('Accept-Ranges', 'bytes')
+        if range_header:
+            self.send_header('Content-Range', f'bytes {start}-{end}/{size}')
+        if download:
+            self.send_header('Content-Disposition', 'attachment; filename="timelapse-' + folder.name + '.mp4"')
+        self.send_header('Cache-Control', 'private, no-store')
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.end_headers()
+        with video.open('rb') as stream:
+            stream.seek(start)
+            remaining = end - start + 1
+            while remaining > 0:
+                block = stream.read(min(64 * 1024, remaining))
+                if not block:
+                    break
+                self.wfile.write(block)
+                remaining -= len(block)
 
     def camera_live(self):
         # Resolve camera on the protected bridge; never expose its private URL to the browser.
@@ -404,9 +422,10 @@ class Handler(SimpleHTTPRequestHandler):
                 if not 0 <= index < len(frames):
                     raise ValueError('Invalid frame index')
                 return self.picture(frames[index].read_bytes())
-            if path == '/api/printer/timelapses/download':
+            if path in ('/api/printer/timelapses/video', '/api/printer/timelapses/download'):
                 query = parse_qs(url.query)
-                return self.download_timelapse(timelapse_folder(query.get('id', [''])[0]))
+                return self.send_video(timelapse_folder(query.get('id', [''])[0]),
+                                       download=path.endswith('/download'))
             if path == '/api/printer/camera/live':
                 return self.camera_live()
             if path == '/api/printer/camera':
@@ -429,7 +448,6 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_error(404)
 
     def do_POST(self):
-        global TIMELAPSE_DIR
         url = urlsplit(self.path)
         path = url.path
         if path not in ('/api/printer/jobs', '/api/printer/upload', '/api/printer/actions',
@@ -453,7 +471,13 @@ class Handler(SimpleHTTPRequestHandler):
                     raise ValueError('Archivo vacío o incompleto')
                 name = 'three-slicer-ad4.gcode' if legacy else safe_filename(
                     unquote(parse_qs(url.query).get('name', [''])[0]))
-                start = parse_qs(url.query).get('start', ['false'])[0] == 'true'
+                query = parse_qs(url.query)
+                start = query.get('start', ['false'])[0] == 'true'
+                auto_timelapse = start and query.get('timelapse', ['false'])[0] == 'true'
+                if auto_timelapse:
+                    TIMELAPSES.require_encoder()
+                    if TIMELAPSES.state()['running'] or TIMELAPSES.state()['encoding']:
+                        raise ValueError('A timelapse session is already active')
                 with tempfile.TemporaryDirectory() as directory:
                     filename = Path(directory) / name
                     filename.write_bytes(data)
@@ -461,7 +485,9 @@ class Handler(SimpleHTTPRequestHandler):
                     metadata = inspect_upload_metadata(filename)
                 remote_name = name if name.lower().endswith('.gx') else str(Path(name).with_suffix('.gx'))
                 save_upload_metadata(remote_name, metadata)
-                return self.json(200, {'remote_name': remote_name, 'started': start, 'detail': output[-1000:]})
+                capture = start_print_timelapse() if auto_timelapse else None
+                return self.json(200, {'remote_name': remote_name, 'started': start,
+                                       'timelapse': capture, 'detail': output[-1000:]})
             body = self.data()
             if not isinstance(body, dict):
                 raise ValueError('Formato JSON no válido')
@@ -470,15 +496,24 @@ class Handler(SimpleHTTPRequestHandler):
                 simple = {'pause': ('pause',), 'resume': ('resume',), 'cancel': ('cancel',),
                           'fan_on': ('fan', 'on'), 'fan_off': ('fan', 'off')}
                 if action == 'print':
+                    auto_timelapse = body.get('timelapse') is True
+                    if auto_timelapse:
+                        TIMELAPSES.require_encoder()
+                        if TIMELAPSES.state()['running'] or TIMELAPSES.state()['encoding']:
+                            raise ValueError('A timelapse session is already active')
                     filename = body.get('file')
                     listed = json.loads(command('files', '--json'))
                     if not isinstance(filename, str) or filename not in listed:
                         raise ValueError('El archivo no está en el listado actual')
                     output = command('print', filename, timeout=50)
+                    if auto_timelapse:
+                        start_print_timelapse()
                 elif action in simple:
                     output = command(*simple[action], timeout=50)
                 else:
                     raise ValueError('Acción no admitida')
+                if action == 'cancel':
+                    TIMELAPSES.stop('print_cancelled')
                 return self.json(200, {'detail': output[-1000:]})
             if path == '/api/printer/selection':
                 profile = body.get('profile')
@@ -517,35 +552,17 @@ class Handler(SimpleHTTPRequestHandler):
                         SELECTED.update(host=None, profile=None)
                 return self.json(200, {'deleted': name})
             if path == '/api/printer/timelapses/delete':
-                folder = timelapse_folder(body.get('id'))
-                with STATE_LOCK:
-                    if folder == TIMELAPSE_DIR and worker_running('timelapse'):
-                        raise ValueError('Stop the timelapse before deleting it')
-                    shutil.rmtree(folder)
-                    if folder == TIMELAPSE_DIR:
-                        TIMELAPSE_DIR = None
-                return self.json(200, {'deleted': folder.name})
+                return self.json(200, TIMELAPSES.delete(body.get('id')))
             if path == '/api/printer/timelapse':
                 action = body.get('action')
-                with STATE_LOCK:
-                    worker = WORKERS['timelapse']
-                    if action == 'stop':
-                        if worker and worker.poll() is None:
-                            worker.terminate()
-                        return self.json(200, timelapse_state())
-                    if action != 'start':
-                        raise ValueError('Acción de timelapse inválida')
-                    if worker and worker.poll() is None:
-                        raise ValueError('Timelapse ya activo')
-                    TIMELAPSE_ROOT.mkdir(parents=True, exist_ok=True, mode=0o700)
-                    TIMELAPSE_DIR = TIMELAPSE_ROOT / (datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S') + '-' + secrets.token_hex(4))
-                    TIMELAPSE_DIR.mkdir(mode=0o700)
-                    WORKERS['timelapse'] = subprocess.Popen(
-                        cli_argv('camera', 'timelapse', str(TIMELAPSE_DIR),
-                                 '--interval', '10', '--count', '20'),
-                        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL)
-                return self.json(200, timelapse_state())
+                if action == 'stop':
+                    return self.json(200, TIMELAPSES.stop('manual'))
+                if action == 'start':
+                    # Manual recordings made during a print also stop at print completion.
+                    argv = cli_argv()
+                    return self.json(200, TIMELAPSES.start(
+                        argv, selected_status_reader(argv), auto=True))
+                raise ValueError('Acción de timelapse inválida')
             if path == '/api/printer/notifications':
                 action = body.get('action')
                 with STATE_LOCK:
@@ -574,6 +591,7 @@ if __name__ == '__main__':
         sys.exit('Missing dist/: run npm run build first')
     if ACCESS_CONFIG:
         _jwks_client(ACCESS_CONFIG['jwks_url'])  # Fail fast if PyJWT is missing.
+    TIMELAPSES.recover()  # Finalize interrupted recordings before accepting requests.
         print('Cloudflare Access validation enabled: ' + ACCESS_CONFIG['public_origin'], flush=True)
     else:
         print('Local-only mode: Cloudflare authentication disabled', flush=True)
