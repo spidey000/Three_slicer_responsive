@@ -88,7 +88,7 @@ A responsive browser-based slicer and Adventurer 4 management UI powered by [Thr
 
 **[Secure worldwide deployment (recommended)](docs/REMOTE_ACCESS.md)** · **[Try the public slicer-only demo](https://spidey000.github.io/Three_slicer_responsive/)** · **[Local-only setup](docs/AD4_LOCAL.md)** · **[CLI reference](https://github.com/spidey000/FFAD4Manager/blob/main/docs/CLI.md)**
 
-**Conservative printing defaults:** The standard 0.4 mm Adventurer 4 now opens with a low-speed, quality-oriented 0.20 mm profile. All bundled AD4 processes share the conservative speed and acceleration settings; saved custom processes can intentionally override them. See [the speed, acceleration and evidence reference](docs/AD4_CONSERVATIVE_PROFILE.md).
+**Conservative printing defaults:** The standard 0.4 mm Adventurer 4 now opens with a low-speed, quality-oriented 0.20 mm profile **and Artillery PLA Basic material selected by default** (210°C first layer, 205°C subsequent layers, 55°C bed). When this PLA is selected, G-code containing heating instructions or recognized metadata above 220°C nozzle / 65°C bed is blocked before upload. This does not rewrite other material profiles or physically validate printer behavior. All bundled AD4 processes share the conservative speed and acceleration settings; saved custom processes can intentionally override them. See [the speed, acceleration and evidence reference](docs/AD4_CONSERVATIVE_PROFILE.md).
 
 ## What works today
 
