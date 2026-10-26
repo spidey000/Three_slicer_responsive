@@ -69,6 +69,44 @@ async function checkWidth(width) {
         visibility: getComputedStyle(card).visibility,
       }
     })
+    // Both quick-action switches must be single pills, with their captions inside
+    // the moving-toggle track and no separate surrounding card.
+    const toggles = await page.evaluate(() => ['mobile-auto-slice', 'mobile-timelapse'].map(id => {
+      const input = document.getElementById(id)
+      const wrapper = input?.closest('label')
+      const track = input?.nextElementSibling
+      const caption = track?.querySelector('.ui-toggle-caption')
+      const a = track?.getBoundingClientRect()
+      const b = caption?.getBoundingClientRect()
+      const wrapperStyle = wrapper ? getComputedStyle(wrapper) : null
+      return {
+        id, text: caption?.textContent?.trim(), checked: input?.checked, role: input?.getAttribute('role'),
+        inside: Boolean(a && b && b.left >= a.left - 1 && b.right <= a.right + 1),
+        notClipped: Boolean(a && a.left >= -1 && a.right <= innerWidth + 1),
+        captionFits: Boolean(caption && caption.scrollWidth <= caption.clientWidth + 2),
+        singleSurface: wrapperStyle?.borderTopWidth === '0px'
+          && wrapperStyle?.backgroundColor === 'rgba(0, 0, 0, 0)',
+      }
+    }))
+    if (toggles.some(item => !item.inside || !item.notClipped || !item.captionFits || !item.singleSurface
+      || item.role !== 'switch' || !item.text)) {
+      throw new Error('Text-inside switch layout regression at ' + width + 'px: ' + JSON.stringify(toggles))
+    }
+    if (width === 390) {
+      const autoSlice = page.locator('#mobile-auto-slice')
+      const timelapse = page.locator('#mobile-timelapse')
+      await page.locator('label[for="mobile-auto-slice"]').click()
+      if (!await autoSlice.isChecked() || await timelapse.isChecked()) {
+        throw new Error('Auto slice toggle changes the wrong setting')
+      }
+      await page.locator('label[for="mobile-timelapse"]').click()
+      if (!await autoSlice.isChecked() || !await timelapse.isChecked()) {
+        throw new Error('Timelapse toggle did not enable independently')
+      }
+      await page.screenshot({ path: `${output}/ios-toggles-enabled-mobile-${width}.png`, fullPage: true })
+      await page.locator('label[for="mobile-timelapse"]').click()
+      await page.locator('label[for="mobile-auto-slice"]').click()
+    }
     await page.screenshot({ path: `${output}/mobile-${width}.png`, fullPage: true })
     const english = await page.evaluate(() => {
       const find = node => {
