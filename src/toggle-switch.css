@@ -1,26 +1,108 @@
-/* Compact accessible switch in the shadcn/ui design language, themed to ThreeSlicer. */
-.ui-toggle { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-width:0;
-  border:1px solid #394956; border-radius:11px; padding:7px 9px; background:#212b35;
-  color:#d9e4eb; cursor:pointer; user-select:none; transition:background .16s,border-color .16s; }
-.ui-toggle:hover { border-color:#698446; background:#29353d; }
-.ui-toggle:has(input:checked) { border-color:#567b32; background:#263625; }
-.ui-toggle input { position:absolute; width:1px; height:1px; overflow:hidden; opacity:0; }
-.ui-toggle input:focus-visible + .ui-toggle-track { outline:2px solid #a3e635; outline-offset:3px; }
-.ui-toggle input:disabled ~ * { opacity:.45; }
-.ui-toggle-track { flex:0 0 34px; width:34px; height:20px; display:flex; align-items:center; padding:2px;
-  background:#394752; border:1px solid #718190; border-radius:999px; transition:background .16s,border-color .16s; }
-.ui-toggle-thumb { display:block; width:14px; height:14px; border-radius:50%; background:#f2f5f7;
-  box-shadow:0 1px 3px #0008; transform:translateX(0); transition:transform .16s; }
-.ui-toggle input:checked + .ui-toggle-track { background:#a3e635; border-color:#a3e635; }
-.ui-toggle input:checked + .ui-toggle-track .ui-toggle-thumb { transform:translateX(14px); background:#182311; }
-.ui-toggle-caption { font-size:11px; font-weight:700; letter-spacing:-.01em; white-space:nowrap; }
-@media (max-width:767px) {
-  .ui-toggle { gap:5px; padding:5px 4px; border-radius:10px; }
-  .ui-toggle-track { flex-basis:29px; width:29px; height:18px; }
-  .ui-toggle-thumb { width:12px; height:12px; }
-  .ui-toggle input:checked + .ui-toggle-track .ui-toggle-thumb { transform:translateX(11px); }
-  .ui-toggle-caption { font-size:9px; }
+/* iOS/vc-style single-surface switch, using ThreeSlicer's existing slate/lime palette. */
+.ui-toggle {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 118px;
+  width: 118px;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
-@media(prefers-reduced-motion:reduce) {
-  .ui-toggle, .ui-toggle-track, .ui-toggle-thumb { transition:none; }
+.ui-toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+.ui-toggle-track {
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  overflow: hidden;
+  border: 1px solid #556674;
+  border-radius: inherit;
+  background: #2b3540;
+  box-shadow: inset 0 1px 4px #0b10164d, 0 2px 8px #0004;
+  transition: background-color .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+.ui-toggle-caption {
+  position: absolute;
+  inset: 0 8px 0 35px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #e7eef4;
+  font-size: 11.5px;
+  line-height: 1;
+  font-weight: 750;
+  letter-spacing: -.015em;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: color .2s ease;
+}
+.ui-toggle-thumb {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #f2f6f8;
+  box-shadow: 0 1px 5px #0007;
+  pointer-events: none;
+  transition: left .22s cubic-bezier(.2,.75,.25,1), background-color .2s ease;
+}
+.ui-toggle input:checked + .ui-toggle-track {
+  background: #a3e635;
+  border-color: #a3e635;
+}
+.ui-toggle input:checked + .ui-toggle-track .ui-toggle-caption {
+  inset-inline: 8px 35px;
+  color: #192611;
+}
+.ui-toggle input:checked + .ui-toggle-track .ui-toggle-thumb {
+  left: calc(100% - 31px);
+  background: #192611;
+}
+.ui-toggle:hover .ui-toggle-track { border-color: #a3e635; }
+.ui-toggle input:focus-visible + .ui-toggle-track {
+  outline: 2px solid #d3ff9a;
+  outline-offset: 3px;
+}
+.ui-toggle:has(input:disabled) { cursor: not-allowed; opacity: .5; }
+@media (max-width: 767px) {
+  .mobile-nav .ui-toggle {
+    width: 100%;
+    max-width: 100%;
+    flex: 1 1 auto;
+  }
+  .mobile-nav .ui-toggle-track { height: 36px; }
+  .mobile-nav .ui-toggle-thumb { width: 24px; height: 24px; top: 5px; left: 5px; }
+  .mobile-nav .ui-toggle input:checked + .ui-toggle-track .ui-toggle-thumb { left: calc(100% - 29px); }
+  .mobile-nav .ui-toggle-caption { inset-inline: 30px 4px; font-size: 9.5px; }
+  .mobile-nav .ui-toggle input:checked + .ui-toggle-track .ui-toggle-caption { inset-inline: 4px 30px; }
+}
+@media (max-width: 360px) {
+  .mobile-nav .ui-toggle-caption { font-size: 9px; }
+  .mobile-nav .ui-toggle-thumb { width: 22px; height: 22px; top: 6px; }
+  .mobile-nav .ui-toggle input:checked + .ui-toggle-track .ui-toggle-thumb { left: calc(100% - 27px); }
+  .mobile-nav .ui-toggle-caption { inset-inline: 27px 3px; }
+  .mobile-nav .ui-toggle input:checked + .ui-toggle-track .ui-toggle-caption { inset-inline: 3px 27px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-toggle-track, .ui-toggle-caption, .ui-toggle-thumb { transition: none; }
 }
