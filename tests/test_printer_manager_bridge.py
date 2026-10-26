@@ -10,7 +10,7 @@ import unittest
 from unittest.mock import patch
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
-from http.server import ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from server import ad4_bridge as bridge
 
@@ -141,28 +141,30 @@ class BridgeChecks(unittest.TestCase):
         self.assertEqual(error.exception.code, 502)
 
     def test_camera_live_proxies_mjpeg_on_private_network(self):
-        class FakeStream:
-            status = 200
-            def __init__(self):
-                self.payload = io.BytesIO(b'--frame\r\nContent-Type: image/jpeg\r\n\r\n\xff\xd8test\xff\xd9\r\n')
-            def getheader(self, name, default=''):
-                return 'multipart/x-mixed-replace; boundary=frame'
-            def read(self, size):
-                return self.payload.read(size)
-        class FakeConnection:
-            def __init__(self, host, port, timeout):
-                self.host = host
-            def request(self, *args, **kwargs):
+        class LocalCamera(BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(200)
+                self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=frame')
+                self.end_headers()
+                self.wfile.write(b'--frame\r\nContent-Type: image/jpeg\r\n\r\n\xff\xd8test\xff\xd9\r\n')
+
+            def log_message(self, *args):
                 pass
-            def getresponse(self):
-                return FakeStream()
-            def close(self):
-                pass
-        with patch.object(bridge, 'command', return_value='http://192.168.1.5:8080/?action=stream'), \
-                patch.object(bridge.http.client, 'HTTPConnection', FakeConnection):
-            with urlopen('http://127.0.0.1:' + str(self.port) + '/api/printer/camera/live') as response:
-                self.assertIn('multipart/x-mixed-replace', response.headers['Content-Type'])
-                self.assertIn(b'\xff\xd8test\xff\xd9', response.read())
+
+        camera = ThreadingHTTPServer(('127.0.0.1', 0), LocalCamera)
+        camera_thread = threading.Thread(target=camera.serve_forever, daemon=True)
+        camera_thread.start()
+        try:
+            url = 'http://127.0.0.1:' + str(camera.server_address[1]) + '/?action=stream'
+            with patch.object(bridge, 'command', return_value=url), \
+                    patch.object(bridge, 'private_ip', return_value=True):
+                with urlopen('http://127.0.0.1:' + str(self.port) + '/api/printer/camera/live') as response:
+                    self.assertIn('multipart/x-mixed-replace', response.headers['Content-Type'])
+                    self.assertIn(b'\xff\xd8test\xff\xd9', response.read())
+        finally:
+            camera.shutdown()
+            camera.server_close()
+            camera_thread.join(timeout=3)
 
     def test_discovery_and_selection(self):
         with patch.object(bridge, 'command', return_value='[{"name":"AD4","ip":"192.168.1.42","port":8899}]'):
