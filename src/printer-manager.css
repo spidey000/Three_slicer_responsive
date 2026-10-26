@@ -86,7 +86,7 @@
 .pm-download { text-decoration:none; }
 .pm-download.pm-disabled { pointer-events:none; opacity:.35; }
 .pm-timelapse-preview { margin-top:11px; }
-.pm-timelapse-preview img { display:block; width:100%; aspect-ratio:16/9; object-fit:contain;
+.pm-timelapse-video { display:block; width:100%; aspect-ratio:16/9; margin-top:11px; object-fit:contain;
   border-radius:10px; background:#10171e; border:1px solid #34414d; }
 
 .pm-camera-empty,.pm-camera-image { width:100%; border-radius:11px; border:1px solid #34414d; }
