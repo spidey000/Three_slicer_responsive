@@ -138,7 +138,57 @@ async function checkWidth(width) {
       if (!modalContent.includes('Slicing settings') || !modalContent.includes('Print configuration')) {
         throw new Error('Mobile settings panel is not in English')
       }
+      // Main tabs and actual values must be visible before opening secondary filters.
+      const compact = await page.evaluate(() => {
+        const drawer = document.querySelector('.settings-drawer')
+        const root = drawer?.querySelector('.settings-surface .sp-embedded')?.shadowRoot
+        const panel = root?.querySelector('.settings-panel')
+        const options = root?.querySelector('.sp-pages')
+        const modes = root?.querySelector('.sp-modes')
+        const search = root?.querySelector('.sp-search')
+        const row = root?.querySelector('.sp-body .row:not(.custom)')
+        const label = row?.querySelector('.lbl')
+        const key = row?.querySelector('.key')
+        const badge = row?.querySelector('.badge')
+        const value = row?.querySelector('.inputwrap > input:not([type])')
+        const visible = element => element && getComputedStyle(element).display !== 'none'
+        const nearSameLine = (a, b) => {
+          if (!a || !b) return false
+          const ar = a.getBoundingClientRect(), br = b.getBoundingClientRect()
+          return Math.abs((ar.top + ar.bottom)/2 - (br.top + br.bottom)/2) < 14
+        }
+        return {
+          collapsed: drawer?.querySelector('.settings-extras-toggle')?.getAttribute('aria-expanded') === 'false',
+          profileHidden: drawer?.querySelector('#settings-extras')?.hidden,
+          tabsVisible: visible(options) && options.getBoundingClientRect().height > 10,
+          modesVisible: visible(modes) && modes.getBoundingClientRect().height > 10,
+          searchHidden: !visible(search),
+          technicalHidden: key && !visible(key),
+          name: label?.textContent?.trim(),
+          badgeInline: nearSameLine(label, badge),
+          fieldWidth: value?.getBoundingClientRect().width,
+          panelInside: panel?.getBoundingClientRect().right <= innerWidth + 2,
+        }
+      })
+      if (!compact.collapsed || !compact.profileHidden || !compact.tabsVisible
+        || !compact.modesVisible || !compact.searchHidden || !compact.technicalHidden
+        || !compact.badgeInline || !compact.panelInside || !compact.name) {
+        throw new Error('Settings drawer default compact layout regression: ' + JSON.stringify(compact))
+      }
+      if (compact.fieldWidth && compact.fieldWidth > 115) {
+        throw new Error('Short numeric field unnecessarily wide: ' + JSON.stringify(compact))
+      }
       await page.screenshot({ path: `${output}/settings-mobile-${width}.png`, fullPage: true })
+      await page.locator('.settings-extras-toggle').click()
+      if (await page.locator('.settings-extras-toggle').getAttribute('aria-expanded') !== 'true') {
+        throw new Error('Profiles and filters accordion did not expand')
+      }
+      const visibleFilters = await page.evaluate(() => {
+        const root = document.querySelector('.settings-surface .sp-embedded')?.shadowRoot
+        return getComputedStyle(root.querySelector('.sp-search')).display !== 'none'
+          && getComputedStyle(root.querySelector('.sp-builder')).display !== 'none'
+      })
+      if (!visibleFilters) throw new Error('Search/category filters missing when accordion expanded')
 
       // The first loaded material must be Artillery PLA Basic, regardless of
       // the first vendor-recommended filament in the upstream AD4 catalog.
@@ -168,6 +218,10 @@ async function checkWidth(width) {
       }
       await page.reload({ waitUntil: 'domcontentloaded' })
       await page.locator('.nav-setting').click()
+      if (await page.locator('.settings-extras-toggle').getAttribute('aria-expanded') !== 'false') {
+        throw new Error('Profiles & filters did not reset to collapsed on reload')
+      }
+      await page.locator('.settings-extras-toggle').click()
       await page.waitForFunction(() => document.querySelector('#ad4-process-select')?.options.length > 2)
       const savedProcess = await page.locator('#ad4-process-select option').filter({ hasText: 'E2E custom process' }).count()
       const savedMaterial = await page.locator('#ad4-material-select option').filter({ hasText: 'E2E custom filament' }).count()
