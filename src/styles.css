@@ -351,16 +351,41 @@ button:focus-visible, select:focus-visible { outline: 2px solid #a3e635; outline
   overflow:hidden; text-overflow:ellipsis; }
 .settings-extras-chevron { flex:0 0 auto; color:#b8c7d1; font-size:20px; line-height:1; }
 .settings-extras[hidden] { display:none!important; }
-.settings-extras { flex:0 1 auto; min-height:0; overflow-y:auto; margin:7px 0 4px;
-  padding:8px; border:1px solid #354550; border-radius:11px; background:#1c2630; }
-.settings-drawer .settings-extras .profile-selects { margin:0; }
+.settings-extras {
+  /* Never let the flex drawer shrink the two select elements to an invisible strip.
+     The settings list below is the ONLY area allowed to consume remaining height. */
+  flex:0 0 auto; width:100%; min-height:0; max-height:min(40dvh,340px);
+  box-sizing:border-box; overflow-y:auto; overscroll-behavior:contain;
+  margin:7px 0 4px; padding:12px;
+  border:1px solid #71964e; border-radius:12px; background:#2a3b2b;
+  box-shadow:inset 0 1px 0 #c0f79914,0 4px 13px #0002;
+  scrollbar-color:#7ca45a transparent;
+}
+.settings-drawer .settings-extras .profile-selects {
+  display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  gap:10px; width:100%; margin:0; min-width:0;
+}
+.settings-drawer .settings-extras .profile-picker { min-width:0; }
+.settings-drawer .settings-extras .profile-picker > label { color:#d5eec7; }
+.settings-drawer .settings-extras .profile-picker select {
+  display:block; width:100%; min-width:0; min-height:44px;
+  background-color:#1b2b25; color:#f1f8ea; border-color:#6e9253;
+}
+.settings-drawer .settings-extras-toggle[aria-expanded="true"] {
+  border-color:#8fb764; background:#30482f; color:#f1ffe7;
+  box-shadow:inset 0 1px 0 #d8ffa215;
+}
+.settings-drawer .settings-extras-toggle[aria-expanded="true"] .settings-extras-icon,
+.settings-drawer .settings-extras-toggle[aria-expanded="true"] .settings-extras-chevron { color:#bcf17f; }
+.settings-drawer .settings-extras-toggle[aria-expanded="true"] .settings-extras-text small { color:#c5e2b1; }
 .settings-drawer .settings-surface { flex:1 1 auto; min-height:0; margin-top:7px; border-radius:11px; }
 .settings-drawer .drawer-slice { margin-top:7px; }
 @media(max-width:767px) {
   .settings-drawer .drawer-header { margin-bottom:7px; padding-bottom:4px; }
   .settings-drawer .drawer-header small { font-size:10px; line-height:1.2; }
   .settings-drawer .settings-extras-toggle { min-height:44px; padding:6px 10px; gap:8px; }
-  .settings-drawer .settings-extras { max-height:35dvh; }
+  .settings-drawer .settings-extras { flex:0 0 auto; max-height:min(42dvh,360px); padding:11px; }
+  .settings-drawer .settings-extras .profile-selects { grid-template-columns:minmax(0,1fr); gap:11px; }
   .settings-drawer .settings-surface { margin-top:6px; }
 }
 @media(prefers-reduced-motion:reduce) {
