@@ -102,6 +102,15 @@ async function checkWidth(width) {
       }
       await page.screenshot({ path: `${output}/settings-mobile-${width}.png`, fullPage: true })
 
+      // The first loaded material must be Artillery PLA Basic, regardless of
+      // the first vendor-recommended filament in the upstream AD4 catalog.
+      await page.waitForFunction(() =>
+        document.querySelector('#ad4-material-select')?.value === 'Artillery PLA Basic @Flashforge AD4',
+        null, { timeout: 30000 })
+      if (await page.locator('#ad4-material-select').inputValue() !== 'Artillery PLA Basic @Flashforge AD4') {
+        throw new Error('Default Artillery PLA material is not selected')
+      }
+
       // Save process + material snapshots from the two dropdowns, then reload.
       await page.waitForFunction(() => document.querySelector('#ad4-process-select')?.options.length > 2)
       await page.locator('#ad4-process-select').selectOption('__save_new_process_profile__')
