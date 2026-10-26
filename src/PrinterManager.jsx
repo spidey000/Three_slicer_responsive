@@ -58,7 +58,7 @@ const normalizeFile = f => typeof f === 'string'
   : { ...f, name: f.name || fileName(f.path) }
 
 
-export default function PrinterManager({ onClose }) {
+export default function PrinterManager({ onClose, timelapseEnabled = false }) {
   const [session, setSession] = useState(null)
   const [state, setState] = useState(null)
   const [bridge, setBridge] = useState(false)
@@ -79,7 +79,6 @@ export default function PrinterManager({ onClose }) {
   const [live, setLive] = useState(false)
   const [timelapses, setTimelapses] = useState([])
   const [selectedTimelapse, setSelectedTimelapse] = useState('')
-  const [frameIndex, setFrameIndex] = useState(0)
   const [selectedFile, setSelectedFile] = useState(null)
   const [timelapse, setTimelapse] = useState(null)
   const cameraUrl = useRef('')
@@ -161,7 +160,7 @@ export default function PrinterManager({ onClose }) {
   async function deleteTimelapse(id) {
     if (!window.confirm('¿Eliminar definitivamente las capturas de este timelapse?')) return
     await run('Eliminar timelapse', () => post('/timelapses/delete', { id }), async () => {
-      if (selectedTimelapse === id) { setSelectedTimelapse(''); setFrameIndex(0) }
+      if (selectedTimelapse === id) setSelectedTimelapse('')
       setTimelapses(await api('/timelapses'))
     })
   }
@@ -175,7 +174,7 @@ export default function PrinterManager({ onClose }) {
     if (!selectedFile) { fileInput.current?.click(); return }
     if (start && !window.confirm('¿Enviar e iniciar la impresión de ' + selectedFile.name + '? Comprueba físicamente la impresora.')) return
     await run(start ? 'Subir e imprimir' : 'Subir archivo', async () => {
-      const response = await fetch(ENDPOINT + '/upload?start=' + start + '&name=' + encode(selectedFile.name), {
+      const response = await fetch(ENDPOINT + '/upload?start=' + start + '&timelapse=' + (start && timelapseEnabled) + '&name=' + encode(selectedFile.name), {
         method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: selectedFile,
       })
       const result = await response.json().catch(() => null)
@@ -203,6 +202,7 @@ export default function PrinterManager({ onClose }) {
             <p className="pm-job-name">{state?.current_file || 'No hay un trabajo identificado'}</p>
             <div className="pm-job-progress"><div className="pm-progress"><span style={{ width: (progress ?? 0) + '%' }}/></div><strong>{progress == null ? '—' : progress + '%'}</strong></div>
             <p className="pm-subtle">Capas: {text(state?.layer_current)} / {text(state?.layer_total)} · Progreso informado por la impresora</p>
+            <p className="pm-subtle">{timelapseEnabled ? 'Timelapse automático activado para la siguiente impresión.' : 'Timelapse automático desactivado en la barra del laminador.'}</p>
             <div className="pm-actions three">
               <button type="button" disabled={!running || !!busy} onClick={() => action('Pausar', { action: 'pause' })}><Icon name="pause"/>Pausar</button>
               <button type="button" disabled={!paused || !!busy} onClick={() => action('Reanudar', { action: 'resume' })}><Icon name="play"/>Reanudar</button>
@@ -226,7 +226,7 @@ export default function PrinterManager({ onClose }) {
             {files.length ? <>
               <div className="pm-list pm-file-list">{visibleFiles.map(f => <div className="pm-list-item" key={f.path}><div className="pm-file-info"><strong title={f.name}>{f.name}</strong>
                 <small>Duración {printDuration(f.estimated_seconds)} · {f.hotend ?? '—'}° / {f.bed ?? '—'}°{f.uploaded_at ? ' · ' + displayDate(f.uploaded_at) : ''}</small></div>
-                <button className="pm-small" type="button" disabled={!available || running || paused || !!busy} onClick={() => action('Imprimir archivo', { action: 'print', file: f.path }, '¿Imprimir el archivo almacenado ' + f.name + '? Comprueba el material y la impresora.') }><Icon name="play"/> Imprimir</button></div>)}</div>
+                <button className="pm-small" type="button" disabled={!available || running || paused || !!busy} onClick={() => action('Imprimir archivo', { action: 'print', file: f.path, timelapse: timelapseEnabled }, '¿Imprimir el archivo almacenado ' + f.name + '? Comprueba el material y la impresora.') }><Icon name="play"/> Imprimir</button></div>)}</div>
               <nav className="pm-pagination" aria-label="Páginas de archivos">
                 <span>{(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, files.length)} de {files.length}</span>
                 <div><button type="button" disabled={currentPage <= 1} onClick={() => setFilePage(currentPage - 1)} aria-label="Página anterior">‹</button>
@@ -257,24 +257,34 @@ export default function PrinterManager({ onClose }) {
             {diagnostic && <pre className="pm-diagnostic">{typeof diagnostic.output === 'string' ? diagnostic.output : JSON.stringify(diagnostic.output, null, 2)}</pre>}
           </Card>
           <Card icon="camera" title="Timelapses">
-            <p className="pm-subtle">Secuencias locales de hasta 20 fotos, una cada 10 segundos. Permanecen guardadas hasta que las elimines.</p>
-            <p className="pm-subtle">Sesión actual: {timelapse?.frames ?? 0} fotogramas · {timelapse?.running ? 'Grabando' : 'Detenida'}</p>
-            <div className="pm-actions"><button disabled={!bridge || !!busy || timelapse?.running} onClick={() => changeTimelapse('start')}>Iniciar</button>
-              <button disabled={!bridge || !!busy || !timelapse?.running} onClick={() => changeTimelapse('stop')}>Detener</button></div>
-            <div className="pm-timelapse-heading"><strong>Grabaciones ({timelapses.length})</strong><button type="button" className="pm-small" disabled={!bridge} onClick={() => api('/timelapses').then(setTimelapses).catch(e => setError(e.message))}><Icon name="refresh"/> Actualizar</button></div>
+            <p className="pm-subtle">Vídeos H.264 MP4 generados en el servidor. El modo automático graba toda la impresión y finaliza al terminar el trabajo, aunque cierres la web.</p>
+            <p className="pm-subtle" role="status">{timelapse?.encoding ? 'Codificando vídeo MP4…' : timelapse?.running ? '● Grabando' : 'Grabación detenida'}
+              {timelapse?.running ? ' · ' + (timelapse.frames ?? 0) + ' fotogramas capturados' : ''}
+              {timelapse?.error ? ' · Error: ' + timelapse.error : ''}</p>
+            <div className="pm-actions">
+              <button disabled={!bridge || !!busy || timelapse?.running || timelapse?.encoding} onClick={() => changeTimelapse('start')}>Grabar manualmente</button>
+              <button disabled={!bridge || !!busy || !timelapse?.running} onClick={() => changeTimelapse('stop')}>Detener y guardar MP4</button>
+            </div>
+            <div className="pm-timelapse-heading"><strong>Vídeos guardados ({timelapses.filter(item => item.video_ready).length})</strong>
+              <button type="button" className="pm-small" disabled={!bridge} onClick={() => api('/timelapses').then(setTimelapses).catch(e => setError(e.message))}><Icon name="refresh"/> Actualizar</button>
+            </div>
             {timelapses.length ? <div className="pm-list pm-timelapse-list">{timelapses.map(item => <div className="pm-list-item" key={item.id}>
-              <div><strong>{displayDate(item.created_at)} · {item.id.slice(9, 11)}:{item.id.slice(11, 13)}</strong><small>{item.frames} fotogramas · {item.running ? 'En curso' : 'Finalizado'}</small></div>
-              <div className="pm-inline"><button type="button" className="pm-small" disabled={!item.frames} onClick={() => { setSelectedTimelapse(selectedTimelapse === item.id ? '' : item.id); setFrameIndex(0) }}>{selectedTimelapse === item.id ? 'Cerrar' : 'Ver'}</button>
-                <a className={'pm-small pm-download ' + (!item.frames ? 'pm-disabled' : '')} href={item.frames ? ENDPOINT + '/timelapses/download?id=' + encode(item.id) : undefined} aria-disabled={!item.frames}>ZIP</a>
-                <button type="button" className="pm-small pm-danger" disabled={!!busy || item.running} onClick={() => deleteTimelapse(item.id)} aria-label={'Eliminar timelapse del ' + displayDate(item.created_at)}>×</button></div>
-            </div>)}</div> : <p className="pm-empty">Aún no hay timelapses guardados.</p>}
-            {previewTimelapse?.frames > 0 && <div className="pm-timelapse-preview">
-              <img src={ENDPOINT + '/timelapses/frame?id=' + encode(previewTimelapse.id) + '&index=' + Math.min(frameIndex, previewTimelapse.frames - 1)} alt={'Fotograma ' + (Math.min(frameIndex, previewTimelapse.frames - 1) + 1) + ' del timelapse'}/>
-              <div className="pm-pagination"><span>Foto {Math.min(frameIndex, previewTimelapse.frames - 1) + 1} / {previewTimelapse.frames}</span>
-                <div><button type="button" onClick={() => setFrameIndex(i => Math.max(0, i - 1))} disabled={frameIndex === 0}>‹</button>
-                  <button type="button" onClick={() => setFrameIndex(i => Math.min(previewTimelapse.frames - 1, i + 1))} disabled={frameIndex >= previewTimelapse.frames - 1}>›</button></div>
+              <div><strong>{displayDate(item.created_at)} · {item.id.slice(9, 11)}:{item.id.slice(11, 13)}</strong>
+                <small>{item.video_ready ? 'MP4 · ' + (item.size_bytes / 1048576).toFixed(1) + ' MB' : item.encoding ? 'Comprimiendo vídeo…' : item.running ? 'Grabando…' : item.error ? 'Error: ' + item.error : 'Pendiente de MP4'}
+                  {' · '}{item.frames} fotogramas</small></div>
+              <div className="pm-inline">
+                <button type="button" className="pm-small" disabled={!item.video_ready} onClick={() => setSelectedTimelapse(selectedTimelapse === item.id ? '' : item.id)}>
+                  {selectedTimelapse === item.id ? 'Cerrar' : 'Ver'}</button>
+                <a className={'pm-small pm-download ' + (!item.video_ready ? 'pm-disabled' : '')}
+                  href={item.video_ready ? ENDPOINT + '/timelapses/download?id=' + encode(item.id) : undefined}
+                  aria-disabled={!item.video_ready} download={'timelapse-' + item.id + '.mp4'}>MP4</a>
+                <button type="button" className="pm-small pm-danger" disabled={!!busy || item.running || item.encoding}
+                  onClick={() => deleteTimelapse(item.id)} aria-label={'Eliminar timelapse del ' + displayDate(item.created_at)}>×</button>
               </div>
-            </div>}
+            </div>)}</div> : <p className="pm-empty">Aún no hay grabaciones.</p>}
+            {previewTimelapse?.video_ready && <video key={previewTimelapse.id} className="pm-timelapse-video" controls playsInline preload="metadata"
+              src={ENDPOINT + '/timelapses/video?id=' + encode(previewTimelapse.id)}
+              aria-label={'Timelapse en MP4 del ' + displayDate(previewTimelapse.created_at)}/>}
           </Card>
           <Card icon="bell" title="Notificaciones del CLI">
             <p className="pm-subtle">Avisos de escritorio en el ordenador Linux del puente (notify-send): pausa, desconexión, impresión y listo. No son notificaciones push al móvil.</p>
